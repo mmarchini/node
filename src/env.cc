@@ -1,6 +1,7 @@
 #include "env.h"
 #include "env-inl.h"
 #include "async-wrap.h"
+#include "base-object.h"
 #include "v8.h"
 #include "v8-profiler.h"
 
@@ -22,6 +23,16 @@ using v8::Local;
 using v8::Message;
 using v8::StackFrame;
 using v8::StackTrace;
+
+Environment *Environment::currentEnvironment = nullptr;
+uint64_t nodedbg_currentEnvironment = (uint64_t) &Environment::currentEnvironment;
+size_t nodedbg_handlesQueueOffset = (size_t) (((Environment*)0)->handle_wrap_queue());
+size_t nodedbg_listHeadNodeOffset = (size_t) &(((Environment::HandleWrapQueue*)0)->head_);
+size_t nodedbg_listNodeNextOffset = (size_t) &(((ListNode<HandleWrap>*)0)->next_);
+size_t nodedbg_class__BaseObject__persistant_handle = (size_t) &(((AsyncWrap*)0)->persistent_handle_);
+// size_t nodedbg_class__BaseObject__persistant_handle = (size_t) &(((AsyncWrap*)0)->persistent());
+// XXX Persistant handle
+
 
 void Environment::Start(int argc,
                         const char* const* argv,

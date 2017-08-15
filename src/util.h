@@ -169,11 +169,11 @@ class ListNode {
   inline ~ListNode();
   inline void Remove();
   inline bool IsEmpty() const;
+  ListNode* prev_;
+  ListNode* next_;
 
  private:
   template <typename U, ListNode<U> (U::*M)> friend class ListHead;
-  ListNode* prev_;
-  ListNode* next_;
   DISALLOW_COPY_AND_ASSIGN(ListNode);
 };
 
@@ -201,9 +201,9 @@ class ListHead {
   inline T* PopFront();
   inline Iterator begin() const;
   inline Iterator end() const;
+  ListNode<T> head_;
 
  private:
-  ListNode<T> head_;
   DISALLOW_COPY_AND_ASSIGN(ListHead);
 };
 

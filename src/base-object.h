@@ -58,6 +58,7 @@ class BaseObject {
 
   inline void ClearWeak();
 
+  v8::Persistent<v8::Object> persistent_handle_;
  private:
   BaseObject();
 
@@ -65,7 +66,6 @@ class BaseObject {
   static inline void WeakCallback(
       const v8::WeakCallbackInfo<Type>& data);
 
-  v8::Persistent<v8::Object> persistent_handle_;
   Environment* env_;
 };
 
