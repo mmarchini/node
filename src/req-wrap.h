@@ -19,10 +19,10 @@ class ReqWrap : public AsyncWrap {
   inline ~ReqWrap() override;
   inline void Dispatched();  // Call this after the req has been dispatched.
   T* req() { return &req_; }
+  ListNode<ReqWrap> req_wrap_queue_;
 
  private:
   friend class Environment;
-  ListNode<ReqWrap> req_wrap_queue_;
 
  protected:
   // req_wrap_queue_ needs to be at a fixed offset from the start of the class

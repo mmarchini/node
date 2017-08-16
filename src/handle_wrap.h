@@ -69,6 +69,7 @@ class HandleWrap : public AsyncWrap {
   }
 
   inline uv_handle_t* GetHandle() const { return handle_; }
+  ListNode<HandleWrap> handle_wrap_queue_;
 
  protected:
   HandleWrap(Environment* env,
@@ -81,7 +82,6 @@ class HandleWrap : public AsyncWrap {
   friend class Environment;
   friend void GetActiveHandles(const v8::FunctionCallbackInfo<v8::Value>&);
   static void OnClose(uv_handle_t* handle);
-  ListNode<HandleWrap> handle_wrap_queue_;
   enum { kInitialized, kClosing, kClosingWithCallback, kClosed } state_;
   uv_handle_t* const handle_;
 };
