@@ -166,7 +166,7 @@ assert.throws(() => {
   }, common.expectsError({ code: 'TEST_ERROR_1', type: RangeError }));
 }, common.expectsError({
   code: 'ERR_ASSERTION',
-  message: /^.+ is not the expected type \S/
+  message: /^.+ is not instance of \S/
 }));
 
 assert.throws(() => {
@@ -229,3 +229,34 @@ assert.throws(
     code: 'ERR_ASSERTION',
     message: /^At least one arg needs to be specified$/
   }));
+
+
+// Test ERR_TLS_CERT_ALTNAME_INVALID
+assert.strictEqual(
+  errors.message('ERR_TLS_CERT_ALTNAME_INVALID', ['altname']),
+  'Hostname/IP does not match certificate\'s altnames: altname');
+
+assert.strictEqual(
+  errors.message('ERR_INVALID_PROTOCOL', ['bad protocol', 'http']),
+  'Protocol "bad protocol" not supported. Expected "http"'
+);
+
+assert.strictEqual(
+  errors.message('ERR_HTTP_HEADERS_SENT'),
+  'Cannot render headers after they are sent to the client'
+);
+
+assert.strictEqual(
+  errors.message('ERR_INVALID_DOMAIN_NAME'),
+  'Unable to determine the domain name'
+);
+
+assert.strictEqual(
+  errors.message('ERR_INVALID_HTTP_TOKEN', ['Method']),
+  'Method must be a valid HTTP token'
+);
+
+assert.strictEqual(
+  errors.message('ERR_UNESCAPED_CHARACTERS', ['Request path']),
+  'Request path contains unescaped characters'
+);

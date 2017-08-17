@@ -181,6 +181,12 @@ must provide a function satisfying the following signature which would get
 called upon the object's collection. Currently, `napi_finalize` can be used for
 finding out when objects that have external data are collected.
 
+```C
+typedef void (*napi_finalize)(napi_env env,
+                              void* finalize_data,
+                              void* finalize_hint);
+```
+
 
 #### napi_async_execute_callback
 Function pointer used with functions that support asynchronous
@@ -323,6 +329,31 @@ code needs to create an Error object: [`napi_create_error`][],
 where result is the napi_value that refers to the newly created
 JavaScript Error object.
 
+The Node.js project is adding error codes to all of the errors
+generated internally.  The goal is for applications to use these
+error codes for all error checking. The associated error messages
+will remain, but will only be meant to be used for logging and
+display with the expectation that the message can change without
+SemVer applying. In order to support this model with N-API, both
+in internal functionality and for module specific functionality
+(as its good practice), the `throw_` and `create_` functions
+take an optional code parameter which is the string for the code
+to be added to the error object.  If the optional parameter is NULL
+then no code will be associated with the error. If a code is provided,
+the name associated with the error is also updated to be:
+
+```
+originalName [code]
+```
+
+where originalName is the original name associated with the error
+and code is the code that was provided.  For example if the code
+is 'ERR_ERROR_1' and a TypeError is being created the name will be:
+
+```
+TypeError [ERR_ERROR_1]
+```
+
 #### napi_throw
 <!-- YAML
 added: v8.0.0
@@ -343,9 +374,12 @@ This API throws the JavaScript Error provided.
 added: v8.0.0
 -->
 ```C
-NODE_EXTERN napi_status napi_throw_error(napi_env env, const char* msg);
+NODE_EXTERN napi_status napi_throw_error(napi_env env,
+                                         const char* code,
+                                         const char* msg);
 ```
 - `[in] env`: The environment that the API is invoked under.
+- `[in] code`: Optional error code to be set on the error.
 - `[in] msg`: C string representing the text to be associated with
 the error.
 
@@ -358,9 +392,12 @@ This API throws a JavaScript Error with the text provided.
 added: v8.0.0
 -->
 ```C
-NODE_EXTERN napi_status napi_throw_type_error(napi_env env, const char* msg);
+NODE_EXTERN napi_status napi_throw_type_error(napi_env env,
+                                              const char* code,
+                                              const char* msg);
 ```
 - `[in] env`: The environment that the API is invoked under.
+- `[in] code`: Optional error code to be set on the error.
 - `[in] msg`: C string representing the text to be associated with
 the error.
 
@@ -373,9 +410,12 @@ This API throws a JavaScript TypeError with the text provided.
 added: v8.0.0
 -->
 ```C
-NODE_EXTERN napi_status napi_throw_range_error(napi_env env, const char* msg);
+NODE_EXTERN napi_status napi_throw_range_error(napi_env env,
+                                               const char* code,
+                                               const char* msg);
 ```
 - `[in] env`: The environment that the API is invoked under.
+- `[in] code`: Optional error code to be set on the error.
 - `[in] msg`: C string representing the text to be associated with
 the error.
 
@@ -409,10 +449,13 @@ added: v8.0.0
 -->
 ```C
 NODE_EXTERN napi_status napi_create_error(napi_env env,
+                                          napi_value code,
                                           napi_value msg,
                                           napi_value* result);
 ```
 - `[in] env`: The environment that the API is invoked under.
+- `[in] code`: Optional `napi_value` with the string for the error code to
+               be associated with the error.
 - `[in] msg`: napi_value that references a JavaScript String to be
 used as the message for the Error.
 - `[out] result`: `napi_value` representing the error created.
@@ -427,10 +470,13 @@ added: v8.0.0
 -->
 ```C
 NODE_EXTERN napi_status napi_create_type_error(napi_env env,
+                                               napi_value code,
                                                napi_value msg,
                                                napi_value* result);
 ```
 - `[in] env`: The environment that the API is invoked under.
+- `[in] code`: Optional `napi_value` with the string for the error code to
+               be associated with the error.
 - `[in] msg`: napi_value that references a JavaScript String to be
 used as the message for the Error.
 - `[out] result`: `napi_value` representing the error created.
@@ -446,10 +492,13 @@ added: v8.0.0
 -->
 ```C
 NODE_EXTERN napi_status napi_create_range_error(napi_env env,
+                                                napi_value code,
                                                 const char* msg,
                                                 napi_value* result);
 ```
 - `[in] env`: The environment that the API is invoked under.
+- `[in] code`: Optional `napi_value` with the string for the error code to
+               be associated with the error.
 - `[in] msg`: napi_value that references a JavaScript String to be
 used as the message for the Error.
 - `[out] result`: `napi_value` representing the error created.
@@ -490,6 +539,23 @@ Returns `napi_ok` if the API succeeded.
 
 This API returns true if an exception is pending.
 
+### Fatal Errors
+
+In the event of an unrecoverable error in a native module, a fatal error can be
+thrown to immediately terminate the process.
+
+#### napi_fatal_error
+<!-- YAML
+added: v8.2.0
+-->
+```C
+NAPI_EXTERN NAPI_NO_RETURN void napi_fatal_error(const char* location, const char* message);
+```
+
+- `[in] location`: Optional location at which the error occurred.
+- `[in] message`: The message associated with the error.
+
+The function call does not return, the process will be terminated.
 
 ## Object Lifetime management
 
@@ -1271,13 +1337,116 @@ JavaScript TypedArray Objects are described in
 [Section 22.2](https://tc39.github.io/ecma262/#sec-typedarray-objects)
 of the ECMAScript Language Specification.
 
-### Functions to convert from C types to N-API
-#### *napi_create_number*
+
+#### *napi_create_dataview*
 <!-- YAML
-added: v8.0.0
+added: REPLACEME
+-->
+
+```C
+napi_status napi_create_dataview(napi_env env,
+                                 size_t byte_length,
+                                 napi_value arraybuffer,
+                                 size_t byte_offset,
+                                 napi_value* result)
+
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] length`: Number of elements in the DataView.
+- `[in] arraybuffer`: ArrayBuffer underlying the DataView.
+- `[in] byte_offset`: The byte offset within the ArrayBuffer from which to
+  start projecting the DataView.
+- `[out] result`: A `napi_value` representing a JavaScript DataView.
+
+Returns `napi_ok` if the API succeeded.
+
+This API creates a JavaScript DataView object over an existing ArrayBuffer.
+DataView objects provide an array-like view over an underlying data buffer,
+but one which allows items of different size and type in the ArrayBuffer.
+
+It is required that `byte_length + byte_offset` is less than or equal to the
+size in bytes of the array passed in. If not, a RangeError exception is raised.
+
+JavaScript DataView Objects are described in
+[Section 24.3][] of the ECMAScript Language Specification.
+
+### Functions to convert from C types to N-API
+#### *napi_create_int32*
+<!-- YAML
+added: REPLACEME
 -->
 ```C
-napi_status napi_create_number(napi_env env, double value, napi_value* result)
+napi_status napi_create_int32(napi_env env, int32_t value, napi_value* result)
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] value`: Integer value to be represented in JavaScript.
+- `[out] result`: A `napi_value` representing a JavaScript Number.
+
+Returns `napi_ok` if the API succeeded.
+
+This API is used to convert from the C `int32_t` type to the JavaScript
+Number type.
+
+The JavaScript Number type is described in
+[Section 6.1.6](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type)
+of the ECMAScript Language Specification.
+
+#### *napi_create_uint32*
+<!-- YAML
+added: REPLACEME
+-->
+```C
+napi_status napi_create_uint32(napi_env env, uint32_t value, napi_value* result)
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] value`: Unsigned integer value to be represented in JavaScript.
+- `[out] result`: A `napi_value` representing a JavaScript Number.
+
+Returns `napi_ok` if the API succeeded.
+
+This API is used to convert from the C `uint32_t` type to the JavaScript
+Number type.
+
+The JavaScript Number type is described in
+[Section 6.1.6](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type)
+of the ECMAScript Language Specification.
+
+#### *napi_create_int64*
+<!-- YAML
+added: REPLACEME
+-->
+```C
+napi_status napi_create_int64(napi_env env, int64_t value, napi_value* result)
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] value`: Integer value to be represented in JavaScript.
+- `[out] result`: A `napi_value` representing a JavaScript Number.
+
+Returns `napi_ok` if the API succeeded.
+
+This API is used to convert from the C `int64_t` type to the JavaScript
+Number type.
+
+The JavaScript Number type is described in
+[Section 6.1.6](https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type)
+of the ECMAScript Language Specification. Note the complete range of `int64_t`
+cannot be represented with full precision in JavaScript. Integer values
+outside the range of
+[`Number.MIN_SAFE_INTEGER`](https://tc39.github.io/ecma262/#sec-number.min_safe_integer)
+-(2^53 - 1) -
+[`Number.MAX_SAFE_INTEGER`](https://tc39.github.io/ecma262/#sec-number.max_safe_integer)
+(2^53 - 1) will lose precision.
+
+#### *napi_create_double*
+<!-- YAML
+added: REPLACEME
+-->
+```C
+napi_status napi_create_double(napi_env env, double value, napi_value* result)
 ```
 
 - `[in] env`: The environment that the API is invoked under.
@@ -1286,7 +1455,7 @@ napi_status napi_create_number(napi_env env, double value, napi_value* result)
 
 Returns `napi_ok` if the API succeeded.
 
-This API is used to convert from the C double type to the JavaScript
+This API is used to convert from the C `double` type to the JavaScript
 Number type.
 
 The JavaScript Number type is described in
@@ -1491,6 +1660,36 @@ This API returns various properties of a typed array.
 
 *Warning*: Use caution while using this API since the underlying data buffer
 is managed by the VM
+
+
+
+#### *napi_get_dataview_info*
+<!-- YAML
+added: REPLACEME
+-->
+
+```C
+napi_status napi_get_dataview_info(napi_env env,
+                                   napi_value dataview,
+                                   size_t* byte_length,
+                                   void** data,
+                                   napi_value* arraybuffer,
+                                   size_t* byte_offset)
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] dataview`: `napi_value` representing the DataView whose
+  properties to query.
+- `[out] byte_length`: Number of bytes in the DataView.
+- `[out] data`: The data buffer underlying the DataView.
+- `[out] arraybuffer`: ArrayBuffer underlying the DataView.
+- `[out] byte_offset`: The byte offset within the data buffer from which
+  to start projecting the DataView.
+
+Returns `napi_ok` if the API succeeded.
+
+This API returns various properties of a DataView.
+
 
 #### *napi_get_value_bool*
 <!-- YAML
@@ -1959,6 +2158,25 @@ Returns `napi_ok` if the API succeeded.
 
 This API checks if the Object passsed in is a typed array.
 
+
+
+### *napi_is_dataview*
+<!-- YAML
+added: REPLACEME
+-->
+
+```C
+napi_status napi_is_dataview(napi_env env, napi_value value, bool* result)
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] value`: The JavaScript value to check.
+- `[out] result`: Whether the given `napi_value` represents a DataView.
+
+Returns `napi_ok` if the API succeeded.
+
+This API checks if the Object passed in is a DataView.
+
 ### *napi_strict_equals*
 <!-- YAML
 added: v8.0.0
@@ -2021,7 +2239,7 @@ status = napi_create_object(env, &obj);
 if (status != napi_ok) return status;
 
 // Create a napi_value for 123
-status = napi_create_number(env, 123, &value);
+status = napi_create_int32(env, 123, &value);
 if (status != napi_ok) return status;
 
 // obj.myProp = 123
@@ -2095,9 +2313,9 @@ if (status != napi_ok) return status;
 
 // Create napi_values for 123 and 456
 napi_value fooValue, barValue;
-status = napi_create_number(env, 123, &fooValue);
+status = napi_create_int32(env, 123, &fooValue);
 if (status != napi_ok) return status;
-status = napi_create_number(env, 456, &barValue);
+status = napi_create_int32(env, 456, &barValue);
 if (status != napi_ok) return status;
 
 // Set the properties
@@ -2278,7 +2496,7 @@ This API checks if the Object passed in has the named property.
 
 #### *napi_delete_property*
 <!-- YAML
-added: REPLACEME
+added: v8.2.0
 -->
 ```C
 napi_status napi_delete_property(napi_env env,
@@ -2300,7 +2518,7 @@ This API attempts to delete the `key` own property from `object`.
 
 #### *napi_has_own_property*
 <!-- YAML
-added: REPLACEME
+added: v8.2.0
 -->
 ```C
 napi_status napi_has_own_property(napi_env env,
@@ -2447,7 +2665,7 @@ requested index.
 
 #### *napi_delete_element*
 <!-- YAML
-added: REPLACEME
+added: v8.2.0
 -->
 ```C
 napi_status napi_delete_element(napi_env env,
@@ -2558,7 +2776,7 @@ status = napi_get_named_property(env, global, "AddTwo", &add_two);
 if (status != napi_ok) return;
 
 // const arg = 1337
-status = napi_create_number(env, 1337, &arg);
+status = napi_create_int32(env, 1337, &arg);
 if (status != napi_ok) return;
 
 napi_value* argv = &arg;
@@ -3105,6 +3323,7 @@ support it:
 [Object Wrap]: #n_api_object_wrap
 [Section 9.1.6]: https://tc39.github.io/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-defineownproperty-p-desc
 [Section 12.5.5]: https://tc39.github.io/ecma262/#sec-typeof-operator
+[Section 24.3]: https://tc39.github.io/ecma262/#sec-dataview-objects
 [Working with JavaScript Functions]: #n_api_working_with_javascript_functions
 [Working with JavaScript Properties]: #n_api_working_with_javascript_properties
 [Working with JavaScript Values]: #n_api_working_with_javascript_values
@@ -3143,6 +3362,7 @@ support it:
 [`napi_queue_async_work`]: #n_api_napi_queue_async_work
 [`napi_reference_ref`]: #n_api_napi_reference_ref
 [`napi_reference_unref`]: #n_api_napi_reference_unref
+[`napi_throw`]: #n_api_napi_throw
 [`napi_throw_error`]: #n_api_napi_throw_error
 [`napi_throw_range_error`]: #n_api_napi_throw_range_error
 [`napi_throw_type_error`]: #n_api_napi_throw_type_error

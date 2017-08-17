@@ -607,7 +607,7 @@ The DebugContext will be removed in V8 soon and will not be available in Node
 <a id="DEP0070"></a>
 ### DEP0070: async_hooks.currentId()
 
-Type: Runtime
+Type: End-of-Life
 
 `async_hooks.currentId()` was renamed to `async_hooks.executionAsyncId()` for
 clarity.
@@ -617,7 +617,7 @@ clarity.
 <a id="DEP0071"></a>
 ### DEP0071: async_hooks.triggerId()
 
-Type: Runtime
+Type: End-of-Life
 
 `async_hooks.triggerId()` was renamed to `async_hooks.triggerAsyncId()` for
 clarity.
@@ -627,12 +627,39 @@ clarity.
 <a id="DEP0072"></a>
 ### DEP0072: async_hooks.AsyncResource.triggerId()
 
-Type: Runtime
+Type: End-of-Life
 
 `async_hooks.AsyncResource.triggerId()` was renamed to
 `async_hooks.AsyncResource.triggerAsyncId()` for clarity.
 
 *Note*: change was made while `async_hooks` was an experimental API.
+
+<a id="DEP0073"></a>
+### DEP0073: Several internal properties of net.Server
+
+Type: Runtime
+
+Accessing several internal, undocumented properties of `net.Server` instances
+with inappropriate names has been deprecated.
+
+*Note*: As the original API was undocumented and not generally useful for
+non-internal code, no replacement API is provided.
+
+<a id="DEP0074"></a>
+### DEP0074: REPLServer.bufferedCommand
+
+Type: Runtime
+
+The `REPLServer.bufferedCommand` property was deprecated in favor of
+[`REPLServer.clearBufferedCommand()`][].
+
+<a id="DEP0075"></a>
+### DEP0075: REPLServer.parseREPLKeyword()
+
+Type: Runtime
+
+`REPLServer.parseREPLKeyword()` was removed from userland visibility.
+
 
 [`Buffer.allocUnsafeSlow(size)`]: buffer.html#buffer_class_method_buffer_allocunsafeslow_size
 [`Buffer.from(array)`]: buffer.html#buffer_class_method_buffer_from_array
@@ -697,3 +724,4 @@ Type: Runtime
 [alloc_unsafe_size]: buffer.html#buffer_class_method_buffer_allocunsafe_size
 [from_arraybuffer]: buffer.html#buffer_class_method_buffer_from_arraybuffer_byteoffset_length
 [from_string_encoding]: buffer.html#buffer_class_method_buffer_from_string_encoding
+[`REPLServer.clearBufferedCommand()`]: repl.html#repl_replserver_clearbufferedcommand

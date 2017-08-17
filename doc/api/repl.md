@@ -335,7 +335,7 @@ const replServer = repl.start({ prompt: '> ' });
 replServer.defineCommand('sayhello', {
   help: 'Say hello',
   action(name) {
-    this.bufferedCommand = '';
+    this.clearBufferedCommand();
     console.log(`Hello, ${name}!`);
     this.displayPrompt();
   }
@@ -375,6 +375,30 @@ The `replServer.displayPrompt` method is primarily intended to be called from
 within the action function for commands registered using the
 `replServer.defineCommand()` method.
 
+### replServer.clearBufferedCommand()
+<!-- YAML
+added: REPLACEME
+-->
+
+The `replServer.clearBufferedComand()` method clears any command that has been
+buffered but not yet executed. This method is primarily intended to be
+called from within the action function for commands registered using the
+`replServer.defineCommand()` method.
+
+### replServer.parseREPLKeyword(keyword, [rest])
+<!-- YAML
+added: v0.8.9
+deprecated: REPLACEME
+-->
+
+* `keyword` {string} the potential keyword to parse and execute
+* `rest` {any} any parameters to the keyword command
+
+> Stability: 0 - Deprecated.
+
+An internal method used to parse and execute `REPLServer` keywords.
+Returns `true` if `keyword` is a valid keyword, otherwise `false`.
+
 ## repl.start([options])
 <!-- YAML
 added: v0.1.91
@@ -405,7 +429,8 @@ changes:
      REPL instances `terminal` value.
   * `useGlobal` {boolean} If `true`, specifies that the default evaluation
      function will use the JavaScript `global` as the context as opposed to
-     creating a new separate context for the REPL instance. Defaults to `false`.
+     creating a new separate context for the REPL instance. The node CLI REPL
+     sets this value to `true`. Defaults to `false`.
   * `ignoreUndefined` {boolean} If `true`, specifies that the default writer
      will not output the return value of a command if it evaluates to
      `undefined`. Defaults to `false`.

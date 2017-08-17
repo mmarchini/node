@@ -5,19 +5,20 @@ if (!common.hasIntl) {
   common.skip('missing Intl');
 }
 
-const path = require('path');
+const fixtures = require('../common/fixtures');
 const { URL } = require('url');
 const { test, assert_equals, assert_throws } = require('../common/wpt');
 
 const request = {
-  response: require(path.join(common.fixturesDir, 'url-toascii'))
+  response: require(fixtures.path('url-toascii'))
 };
 
-/* eslint-disable */
-/* WPT Refs:
+/* The following tests are copied from WPT. Modifications to them should be
+   upstreamed first. Refs:
    https://github.com/w3c/web-platform-tests/blob/4839a0a804/url/toascii.window.js
    License: http://www.w3.org/Consortium/Legal/2008/04-testsuite-copyright.html
 */
+/* eslint-disable */
 // async_test(t => {
 //   const request = new XMLHttpRequest()
 //   request.open("GET", "toascii.json")

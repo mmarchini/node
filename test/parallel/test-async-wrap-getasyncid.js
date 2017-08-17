@@ -5,6 +5,7 @@ const assert = require('assert');
 const fs = require('fs');
 const net = require('net');
 const providers = Object.assign({}, process.binding('async_wrap').Providers);
+const fixtures = require('../common/fixtures');
 
 // Make sure that all Providers are tested.
 {
@@ -19,6 +20,11 @@ const providers = Object.assign({}, process.binding('async_wrap').Providers);
     process.removeAllListeners('uncaughtException');
     hooks.disable();
     delete providers.NONE;  // Should never be used.
+
+    // TODO(jasnell): Test for these
+    delete providers.HTTP2SESSION;
+    delete providers.HTTP2SESSIONSHUTDOWNWRAP;
+
     const obj_keys = Object.keys(providers);
     if (obj_keys.length > 0)
       process._rawDebug(obj_keys);
@@ -51,6 +57,7 @@ function testInitialized(req, ctor_name) {
   testInitialized(dns.lookup('www.google.com', () => {}), 'GetAddrInfoReqWrap');
   testInitialized(dns.lookupService('::1', 22, () => {}), 'GetNameInfoReqWrap');
   testInitialized(dns.resolve6('::1', () => {}), 'QueryReqWrap');
+  testInitialized(new cares.ChannelWrap(), 'ChannelWrap');
 }
 
 
@@ -160,6 +167,7 @@ if (common.hasCrypto) {
   const stream_wrap = process.binding('stream_wrap');
   const tcp_wrap = process.binding('tcp_wrap');
   const server = net.createServer(common.mustCall((socket) => {
+    server.close();
     socket.on('data', (x) => {
       socket.end();
       socket.destroy();
@@ -176,7 +184,6 @@ if (common.hasCrypto) {
 
     sreq.oncomplete = common.mustCall(() => {
       handle.close();
-      server.close();
     });
 
     wreq.handle = handle;
@@ -212,9 +219,10 @@ if (common.hasCrypto) {
   const TCP = process.binding('tcp_wrap').TCP;
   const tcp = new TCP();
 
-  const ca = fs.readFileSync(common.fixturesDir + '/test_ca.pem', 'ascii');
-  const cert = fs.readFileSync(common.fixturesDir + '/test_cert.pem', 'ascii');
-  const key = fs.readFileSync(common.fixturesDir + '/test_key.pem', 'ascii');
+  const ca = fixtures.readSync('test_ca.pem', 'ascii');
+  const cert = fixtures.readSync('test_cert.pem', 'ascii');
+  const key = fixtures.readSync('test_key.pem', 'ascii');
+
   const credentials = require('tls').createSecureContext({ ca, cert, key });
 
   // TLSWrap is exposed, but needs to be instantiated via tls_wrap.wrap().

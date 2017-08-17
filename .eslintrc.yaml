@@ -101,18 +101,13 @@ rules:
   func-call-spacing: error
   func-name-matching: error
   func-style: [error, declaration, {allowArrowFunctions: true}]
-  # indent: [error, 2, {ArrayExpression: first,
-  #                 CallExpression: {arguments: first},
-  #                 FunctionDeclaration: {parameters: first},
-  #                 FunctionExpression: {parameters: first},
-  #                 MemberExpression: off,
-  #                 ObjectExpression: first,
-  #                 SwitchCase: 1}]
-  indent-legacy: [error, 2, {ArrayExpression: first,
-                         CallExpression: {arguments: first},
-                         MemberExpression: 1,
-                         ObjectExpression: first,
-                         SwitchCase: 1}]
+  indent: [error, 2, {ArrayExpression: first,
+                      CallExpression: {arguments: first},
+                      FunctionDeclaration: {parameters: first},
+                      FunctionExpression: {parameters: first},
+                      MemberExpression: off,
+                      ObjectExpression: first,
+                      SwitchCase: 1}]
   key-spacing: [error, {mode: minimum}]
   keyword-spacing: error
   linebreak-style: [error, unix]
@@ -124,6 +119,12 @@ rules:
   no-mixed-spaces-and-tabs: error
   no-multiple-empty-lines: [error, {max: 2, maxEOF: 0, maxBOF: 0}]
   no-restricted-syntax: [error, {
+    selector: "CallExpression[callee.object.name='assert'][callee.property.name='throws'][arguments.1.type='Literal']:not([arguments.1.regex])",
+    message: "use a regular expression for second argument of assert.throws()"
+  }, {
+    selector: "CallExpression[callee.object.name='assert'][callee.property.name='throws'][arguments.length<2]",
+    message: "assert.throws() must be invoked with at least two arguments."
+  }, {
     selector: "CallExpression[callee.name='setTimeout'][arguments.length<2]",
     message: "setTimeout() must be invoked with at least two arguments."
   }, {
@@ -135,6 +136,7 @@ rules:
   }]
   no-tabs: error
   no-trailing-spaces: error
+  object-curly-spacing: [error, always]
   one-var-declaration-per-line: error
   operator-linebreak: [error, after]
   quotes: [error, single, avoid-escape]
@@ -142,9 +144,9 @@ rules:
   semi-spacing: error
   space-before-blocks: [error, always]
   space-before-function-paren: [error, {
-    "anonymous": "never",
-    "named": "never",
-    "asyncArrow": "always"
+    anonymous: never,
+    named: never,
+    asyncArrow: always
   }]
   space-in-parens: [error, never]
   space-infix-ops: error
@@ -167,7 +169,6 @@ rules:
   template-curly-spacing: error
 
   # Custom rules in tools/eslint-rules
-  assert-throws-arguments: [error, { requireTwo: true }]
   no-unescaped-regexp-dot: error
 
 # Global scoped method and vars

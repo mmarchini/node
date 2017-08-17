@@ -194,28 +194,42 @@ deepStrictEqualValues(genBuffer(4, [hexBufFill, 1, -1]), [0, 0, 0, 0]);
 // Check exceptions
 assert.throws(
   () => buf1.fill(0, -1),
-  common.expectsError({code: 'ERR_INDEX_OUT_OF_RANGE'}));
+  common.expectsError({ code: 'ERR_INDEX_OUT_OF_RANGE' }));
 assert.throws(
   () => buf1.fill(0, 0, buf1.length + 1),
-  common.expectsError({code: 'ERR_INDEX_OUT_OF_RANGE'}));
+  common.expectsError({ code: 'ERR_INDEX_OUT_OF_RANGE' }));
 assert.throws(
   () => buf1.fill('', -1),
-  common.expectsError({code: 'ERR_INDEX_OUT_OF_RANGE'}));
+  common.expectsError({ code: 'ERR_INDEX_OUT_OF_RANGE' }));
 assert.throws(
   () => buf1.fill('', 0, buf1.length + 1),
-  common.expectsError({code: 'ERR_INDEX_OUT_OF_RANGE'}));
+  common.expectsError({ code: 'ERR_INDEX_OUT_OF_RANGE' }));
 assert.throws(
   () => buf1.fill('a', 0, buf1.length, 'node rocks!'),
-  /^TypeError: Unknown encoding: node rocks!$/);
+  common.expectsError({
+    code: 'ERR_UNKNOWN_ENCODING',
+    type: TypeError,
+    message: 'Unknown encoding: node rocks!'
+  }));
 assert.throws(
   () => buf1.fill('a', 0, 0, NaN),
-  /^TypeError: encoding must be a string$/);
+  common.expectsError({
+    code: 'ERR_INVALID_ARG_TYPE',
+    message: 'The "encoding" argument must be of type string'
+  }));
 assert.throws(
   () => buf1.fill('a', 0, 0, null),
-  /^TypeError: encoding must be a string$/);
+  common.expectsError({
+    code: 'ERR_INVALID_ARG_TYPE',
+    message: 'The "encoding" argument must be of type string'
+  }));
 assert.throws(
   () => buf1.fill('a', 0, 0, 'foo'),
-  /^TypeError: Unknown encoding: foo$/);
+  common.expectsError({
+    code: 'ERR_UNKNOWN_ENCODING',
+    type: TypeError,
+    message: 'Unknown encoding: foo'
+  }));
 
 
 function genBuffer(size, args) {
@@ -287,10 +301,10 @@ function testBufs(string, offset, length, encoding) {
 // Make sure these throw.
 assert.throws(
   () => Buffer.allocUnsafe(8).fill('a', -1),
-  common.expectsError({code: 'ERR_INDEX_OUT_OF_RANGE'}));
+  common.expectsError({ code: 'ERR_INDEX_OUT_OF_RANGE' }));
 assert.throws(
   () => Buffer.allocUnsafe(8).fill('a', 0, 9),
-  common.expectsError({code: 'ERR_INDEX_OUT_OF_RANGE'}));
+  common.expectsError({ code: 'ERR_INDEX_OUT_OF_RANGE' }));
 
 // Make sure this doesn't hang indefinitely.
 Buffer.allocUnsafe(8).fill('');
@@ -357,7 +371,7 @@ Buffer.alloc(8, '');
     };
     Buffer.alloc(1).fill(Buffer.alloc(1), start, 1);
   }, common.expectsError(
-    {code: undefined, type: RangeError, message: 'Index out of range'}));
+    { code: undefined, type: RangeError, message: 'Index out of range' }));
   // Make sure -1 is making it to Buffer::Fill().
   assert.ok(elseWasLast,
             'internal API changed, -1 no longer in correct location');
@@ -368,7 +382,7 @@ Buffer.alloc(8, '');
 assert.throws(() => {
   process.binding('buffer').fill(Buffer.alloc(1), 1, -1, 0, 1);
 }, common.expectsError(
-  {code: undefined, type: RangeError, message: 'Index out of range'}));
+  { code: undefined, type: RangeError, message: 'Index out of range' }));
 
 // Make sure "end" is properly checked, even if it's magically mangled using
 // Symbol.toPrimitive.
@@ -392,7 +406,7 @@ assert.throws(() => {
     };
     Buffer.alloc(1).fill(Buffer.alloc(1), 0, end);
   }, common.expectsError(
-    {code: undefined, type: RangeError, message: 'Index out of range'}));
+    { code: undefined, type: RangeError, message: 'Index out of range' }));
   // Make sure -1 is making it to Buffer::Fill().
   assert.ok(elseWasLast,
             'internal API changed, -1 no longer in correct location');
@@ -403,7 +417,7 @@ assert.throws(() => {
 assert.throws(() => {
   process.binding('buffer').fill(Buffer.alloc(1), 1, 1, -2, 1);
 }, common.expectsError(
-  { code: undefined, type: RangeError, message: 'Index out of range'}));
+  { code: undefined, type: RangeError, message: 'Index out of range' }));
 
 // Test that bypassing 'length' won't cause an abort.
 assert.throws(() => {
@@ -414,39 +428,39 @@ assert.throws(() => {
   });
   buf.fill('');
 }, common.expectsError(
-  { code: undefined, type: RangeError, message: 'Index out of range'}));
+  { code: undefined, type: RangeError, message: 'Index out of range' }));
 
 assert.deepStrictEqual(
-    Buffer.allocUnsafeSlow(16).fill('ab', 'utf16le'),
-    Buffer.from('61006200610062006100620061006200', 'hex'));
+  Buffer.allocUnsafeSlow(16).fill('ab', 'utf16le'),
+  Buffer.from('61006200610062006100620061006200', 'hex'));
 
 assert.deepStrictEqual(
-    Buffer.allocUnsafeSlow(15).fill('ab', 'utf16le'),
-    Buffer.from('610062006100620061006200610062', 'hex'));
+  Buffer.allocUnsafeSlow(15).fill('ab', 'utf16le'),
+  Buffer.from('610062006100620061006200610062', 'hex'));
 
 assert.deepStrictEqual(
-    Buffer.allocUnsafeSlow(16).fill('ab', 'utf16le'),
-    Buffer.from('61006200610062006100620061006200', 'hex'));
+  Buffer.allocUnsafeSlow(16).fill('ab', 'utf16le'),
+  Buffer.from('61006200610062006100620061006200', 'hex'));
 assert.deepStrictEqual(
-    Buffer.allocUnsafeSlow(16).fill('a', 'utf16le'),
-    Buffer.from('61006100610061006100610061006100', 'hex'));
+  Buffer.allocUnsafeSlow(16).fill('a', 'utf16le'),
+  Buffer.from('61006100610061006100610061006100', 'hex'));
 
 assert.strictEqual(
-    Buffer.allocUnsafeSlow(16).fill('a', 'utf16le').toString('utf16le'),
-    'a'.repeat(8));
+  Buffer.allocUnsafeSlow(16).fill('a', 'utf16le').toString('utf16le'),
+  'a'.repeat(8));
 assert.strictEqual(
-    Buffer.allocUnsafeSlow(16).fill('a', 'latin1').toString('latin1'),
-    'a'.repeat(16));
+  Buffer.allocUnsafeSlow(16).fill('a', 'latin1').toString('latin1'),
+  'a'.repeat(16));
 assert.strictEqual(
-    Buffer.allocUnsafeSlow(16).fill('a', 'utf8').toString('utf8'),
-    'a'.repeat(16));
+  Buffer.allocUnsafeSlow(16).fill('a', 'utf8').toString('utf8'),
+  'a'.repeat(16));
 
 assert.strictEqual(
-    Buffer.allocUnsafeSlow(16).fill('Љ', 'utf16le').toString('utf16le'),
-    'Љ'.repeat(8));
+  Buffer.allocUnsafeSlow(16).fill('Љ', 'utf16le').toString('utf16le'),
+  'Љ'.repeat(8));
 assert.strictEqual(
-    Buffer.allocUnsafeSlow(16).fill('Љ', 'latin1').toString('latin1'),
-    '\t'.repeat(16));
+  Buffer.allocUnsafeSlow(16).fill('Љ', 'latin1').toString('latin1'),
+  '\t'.repeat(16));
 assert.strictEqual(
-    Buffer.allocUnsafeSlow(16).fill('Љ', 'utf8').toString('utf8'),
-    'Љ'.repeat(8));
+  Buffer.allocUnsafeSlow(16).fill('Љ', 'utf8').toString('utf8'),
+  'Љ'.repeat(8));

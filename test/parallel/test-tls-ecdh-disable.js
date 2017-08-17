@@ -35,7 +35,7 @@ const fs = require('fs');
 const options = {
   key: fs.readFileSync(`${common.fixturesDir}/keys/agent2-key.pem`),
   cert: fs.readFileSync(`${common.fixturesDir}/keys/agent2-cert.pem`),
-  ciphers: 'ECDHE-RSA-RC4-SHA',
+  ciphers: 'ECDHE-RSA-AES128-SHA',
   ecdhCurve: false
 };
 
@@ -43,7 +43,7 @@ const server = tls.createServer(options, common.mustNotCall());
 
 server.listen(0, '127.0.0.1', common.mustCall(function() {
   let cmd = `"${common.opensslCli}" s_client -cipher ${
-            options.ciphers} -connect 127.0.0.1:${this.address().port}`;
+    options.ciphers} -connect 127.0.0.1:${this.address().port}`;
 
   // for the performance and stability issue in s_client on Windows
   if (common.isWindows)

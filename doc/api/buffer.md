@@ -193,11 +193,12 @@ The character encodings currently supported by Node.js include:
 
 * `'hex'` - Encode each byte as two hexadecimal characters.
 
-*Note*: Today's browsers follow the [WHATWG spec] which aliases both 'latin1'
-and ISO-8859-1 to win-1252. This means that while doing something like
-`http.get()`, if the returned charset is one of those listed in the WHATWG spec
-it's possible that the server actually returned win-1252-encoded data, and
-using `'latin1'` encoding may incorrectly decode the characters.
+*Note*: Today's browsers follow the [WHATWG Encoding Standard][] which aliases
+both 'latin1' and ISO-8859-1 to win-1252. This means that while doing something
+like `http.get()`, if the returned charset is one of those listed in the WHATWG
+specification it is possible that the server actually returned
+win-1252-encoded data, and using `'latin1'` encoding may incorrectly decode the
+characters.
 
 ## Buffers and TypedArray
 <!-- YAML
@@ -910,7 +911,7 @@ A `TypeError` will be thrown if `str` is not a string.
 
 ### Class Method: Buffer.from(object[, offsetOrEncoding[, length]])
 <!-- YAML
-added: REPLACEME
+added: v8.2.0
 -->
 
 * `object` {Object} An object supporting `Symbol.toPrimitive` or `valueOf()`
@@ -2662,10 +2663,9 @@ buf.fill(0);
 console.log(buf);
 ```
 
-
 ## Buffer Constants
 <!-- YAML
-added: REPLACEME
+added: 8.2.0
 -->
 
 Note that `buffer.constants` is a property on the `buffer` module returned by
@@ -2673,7 +2673,7 @@ Note that `buffer.constants` is a property on the `buffer` module returned by
 
 ### buffer.constants.MAX_LENGTH
 <!-- YAML
-added: REPLACEME
+added: 8.2.0
 -->
 
 * {integer} The largest size allowed for a single `Buffer` instance
@@ -2685,7 +2685,7 @@ This value is also available as [`buffer.kMaxLength`][].
 
 ### buffer.constants.MAX_STRING_LENGTH
 <!-- YAML
-added: REPLACEME
+added: 8.2.0
 -->
 
 * {integer} The largest length allowed for a single `string` instance
@@ -2730,5 +2730,5 @@ This value may depend on the JS engine that is being used.
 [`util.inspect()`]: util.html#util_util_inspect_object_options
 [RFC1345]: https://tools.ietf.org/html/rfc1345
 [RFC4648, Section 5]: https://tools.ietf.org/html/rfc4648#section-5
-[WHATWG spec]: https://encoding.spec.whatwg.org/
+[WHATWG Encoding Standard]: https://encoding.spec.whatwg.org/
 [iterator]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols

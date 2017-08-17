@@ -1752,6 +1752,10 @@ constructor and implement *both* the `readable._read()` and
   * `writableObjectMode` {boolean} Defaults to `false`. Sets `objectMode`
     for writable side of the stream. Has no effect if `objectMode`
     is `true`.
+  * `readableHighWaterMark` {number} Sets `highWaterMark` for the readable side
+    of the stream. Has no effect if `highWaterMark` is provided.
+  * `writableHighWaterMark` {number} Sets `highWaterMark` for the writable side
+    of the stream. Has no effect if `highWaterMark` is provided.
 
 For example:
 
@@ -2032,6 +2036,10 @@ transform.prototype._transform = function(data, encoding, callback) {
 The `transform._transform()` method is prefixed with an underscore because it
 is internal to the class that defines it, and should never be called directly by
 user programs.
+
+`transform._transform()` is never called in  parallel; streams implement a
+queue mechanism, and to receive the next chunk, `callback` must be
+called, either synchronously or asynchronously.
 
 #### Class: stream.PassThrough
 

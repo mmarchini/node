@@ -12,6 +12,7 @@
 #include "libplatform/libplatform.h"
 
 #include <string.h>
+#include <unordered_map>
 #include <vector>
 
 #ifdef __POSIX__
@@ -21,6 +22,7 @@
 namespace node {
 namespace inspector {
 namespace {
+using v8::Array;
 using v8::Context;
 using v8::External;
 using v8::Function;
@@ -39,6 +41,7 @@ using v8::Value;
 using v8_inspector::StringBuffer;
 using v8_inspector::StringView;
 using v8_inspector::V8Inspector;
+using v8_inspector::V8InspectorClient;
 
 static uv_sem_t start_io_thread_semaphore;
 static uv_async_t start_io_thread_async;
@@ -217,7 +220,8 @@ class JsBindingsSessionDelegate : public InspectorSessionDelegate {
     Local<Value> argument = v8string.ToLocalChecked().As<Value>();
     Local<Function> callback = callback_.Get(isolate);
     Local<Object> receiver = receiver_.Get(isolate);
-    static_cast<void>(callback->Call(env_->context(), receiver, 1, &argument));
+    callback->Call(env_->context(), receiver, 1, &argument)
+        .FromMaybe(Local<Value>());
   }
 
   void Disconnect() {
@@ -351,10 +355,10 @@ void InspectorConsoleCall(const v8::FunctionCallbackInfo<Value>& info) {
 
   Local<Value> node_method = info[1];
   CHECK(node_method->IsFunction());
-  static_cast<void>(node_method.As<Function>()->Call(context,
-                                                     info.Holder(),
-                                                     call_args.size(),
-                                                     call_args.data()));
+  node_method.As<Function>()->Call(context,
+                                   info.Holder(),
+                                   call_args.size(),
+                                   call_args.data()).FromMaybe(Local<Value>());
 }
 
 void CallAndPauseOnStart(
@@ -429,9 +433,66 @@ class ChannelImpl final : public v8_inspector::V8Inspector::Channel {
   std::unique_ptr<v8_inspector::V8InspectorSession> session_;
 };
 
+class InspectorTimer {
+ public:
+  InspectorTimer(uv_loop_t* loop,
+                 double interval_s,
+                 V8InspectorClient::TimerCallback callback,
+                 void* data) : timer_(),
+                               callback_(callback),
+                               data_(data) {
+    uv_timer_init(loop, &timer_);
+    int64_t interval_ms = 1000 * interval_s;
+    uv_timer_start(&timer_, OnTimer, interval_ms, interval_ms);
+  }
+
+  InspectorTimer(const InspectorTimer&) = delete;
+
+  void Stop() {
+    uv_timer_stop(&timer_);
+    uv_close(reinterpret_cast<uv_handle_t*>(&timer_), TimerClosedCb);
+  }
+
+ private:
+  static void OnTimer(uv_timer_t* uvtimer) {
+    InspectorTimer* timer = node::ContainerOf(&InspectorTimer::timer_, uvtimer);
+    timer->callback_(timer->data_);
+  }
+
+  static void TimerClosedCb(uv_handle_t* uvtimer) {
+    InspectorTimer* timer =
+        node::ContainerOf(&InspectorTimer::timer_,
+                          reinterpret_cast<uv_timer_t*>(uvtimer));
+    delete timer;
+  }
+
+  ~InspectorTimer() {}
+
+  uv_timer_t timer_;
+  V8InspectorClient::TimerCallback callback_;
+  void* data_;
+};
+
+class InspectorTimerHandle {
+ public:
+  InspectorTimerHandle(uv_loop_t* loop, double interval_s,
+                       V8InspectorClient::TimerCallback callback, void* data) {
+    timer_ = new InspectorTimer(loop, interval_s, callback, data);
+  }
+
+  InspectorTimerHandle(const InspectorTimerHandle&) = delete;
+
+  ~InspectorTimerHandle() {
+    CHECK_NE(timer_, nullptr);
+    timer_->Stop();
+    timer_ = nullptr;
+  }
+ private:
+  InspectorTimer* timer_;
+};
 }  // namespace
 
-class NodeInspectorClient : public v8_inspector::V8InspectorClient {
+class NodeInspectorClient : public V8InspectorClient {
  public:
   NodeInspectorClient(node::Environment* env,
                       v8::Platform* platform) : env_(env),
@@ -494,6 +555,20 @@ class NodeInspectorClient : public v8_inspector::V8InspectorClient {
     return env_->context();
   }
 
+  void installAdditionalCommandLineAPI(Local<Context> context,
+                                       Local<Object> target) override {
+    Local<Object> console_api = env_->inspector_console_api_object();
+
+    Local<Array> properties =
+        console_api->GetOwnPropertyNames(context).ToLocalChecked();
+    for (uint32_t i = 0; i < properties->Length(); ++i) {
+      Local<Value> key = properties->Get(context, i).ToLocalChecked();
+      target->Set(context,
+                  key,
+                  console_api->Get(context, key).ToLocalChecked()).FromJust();
+    }
+  }
+
   void FatalException(Local<Value> error, Local<v8::Message> message) {
     Local<Context> context = env_->context();
 
@@ -527,6 +602,18 @@ class NodeInspectorClient : public v8_inspector::V8InspectorClient {
     return channel_.get();
   }
 
+  void startRepeatingTimer(double interval_s,
+                           TimerCallback callback,
+                           void* data) override {
+    timers_.emplace(std::piecewise_construct, std::make_tuple(data),
+                    std::make_tuple(env_->event_loop(), interval_s, callback,
+                                    data));
+  }
+
+  void cancelTimer(void* data) override {
+    timers_.erase(data);
+  }
+
  private:
   node::Environment* env_;
   v8::Platform* platform_;
@@ -534,6 +621,7 @@ class NodeInspectorClient : public v8_inspector::V8InspectorClient {
   bool running_nested_loop_;
   std::unique_ptr<V8Inspector> client_;
   std::unique_ptr<ChannelImpl> channel_;
+  std::unordered_map<void*, InspectorTimerHandle> timers_;
 };
 
 Agent::Agent(Environment* env) : parent_env_(env),
@@ -607,6 +695,20 @@ bool Agent::StartIoThread(bool wait_for_connect) {
                arraysize(argv), argv, {0, 0});
 
   return true;
+}
+
+static void AddCommandLineAPI(
+    const FunctionCallbackInfo<Value>& info) {
+  auto env = Environment::GetCurrent(info);
+  Local<Context> context = env->context();
+
+  if (info.Length() != 2 || !info[0]->IsString()) {
+    return env->ThrowTypeError("inspector.addCommandLineAPI takes "
+        "exactly 2 arguments: a string and a value.");
+  }
+
+  Local<Object> console_api = env->inspector_console_api_object();
+  console_api->Set(context, info[0], info[1]).FromJust();
 }
 
 void Agent::Stop() {
@@ -711,8 +813,16 @@ void Url(const FunctionCallbackInfo<Value>& args) {
 void Agent::InitInspector(Local<Object> target, Local<Value> unused,
                           Local<Context> context, void* priv) {
   Environment* env = Environment::GetCurrent(context);
+  {
+    auto obj = Object::New(env->isolate());
+    auto null = Null(env->isolate());
+    CHECK(obj->SetPrototype(context, null).FromJust());
+    env->set_inspector_console_api_object(obj);
+  }
+
   Agent* agent = env->inspector_agent();
   env->SetMethod(target, "consoleCall", InspectorConsoleCall);
+  env->SetMethod(target, "addCommandLineAPI", AddCommandLineAPI);
   if (agent->debug_options_.wait_for_connect())
     env->SetMethod(target, "callAndPauseOnStart", CallAndPauseOnStart);
   env->SetMethod(target, "connect", ConnectJSBindingsSession);

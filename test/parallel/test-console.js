@@ -42,6 +42,12 @@ assert.doesNotThrow(function() {
   console.timeEnd('label');
 });
 
+assert.throws(() => console.time(Symbol('test')),
+              /^TypeError: Cannot convert a Symbol value to a string$/);
+assert.throws(() => console.timeEnd(Symbol('test')),
+              /^TypeError: Cannot convert a Symbol value to a string$/);
+
+
 // an Object with a custom .inspect() function
 const custom_inspect = { foo: 'bar', inspect: () => 'inspect' };
 
@@ -58,28 +64,28 @@ common.hijackStderr(function(data) {
 console.log('foo');
 console.log('foo', 'bar');
 console.log('%s %s', 'foo', 'bar', 'hop');
-console.log({slashes: '\\\\'});
+console.log({ slashes: '\\\\' });
 console.log(custom_inspect);
 
 // test console.info() goes to stdout
 console.info('foo');
 console.info('foo', 'bar');
 console.info('%s %s', 'foo', 'bar', 'hop');
-console.info({slashes: '\\\\'});
+console.info({ slashes: '\\\\' });
 console.info(custom_inspect);
 
 // test console.error() goes to stderr
 console.error('foo');
 console.error('foo', 'bar');
 console.error('%s %s', 'foo', 'bar', 'hop');
-console.error({slashes: '\\\\'});
+console.error({ slashes: '\\\\' });
 console.error(custom_inspect);
 
 // test console.warn() goes to stderr
 console.warn('foo');
 console.warn('foo', 'bar');
 console.warn('%s %s', 'foo', 'bar', 'hop');
-console.warn({slashes: '\\\\'});
+console.warn({ slashes: '\\\\' });
 console.warn(custom_inspect);
 
 // test console.dir()
@@ -102,6 +108,20 @@ console.time('constructor');
 console.timeEnd('constructor');
 console.time('hasOwnProperty');
 console.timeEnd('hasOwnProperty');
+
+// verify that values are coerced to strings
+console.time([]);
+console.timeEnd([]);
+console.time({});
+console.timeEnd({});
+console.time(null);
+console.timeEnd(null);
+console.time(undefined);
+console.timeEnd('default');
+console.time('default');
+console.timeEnd();
+console.time(NaN);
+console.timeEnd(NaN);
 
 assert.strictEqual(strings.length, process.stdout.writeTimes);
 assert.strictEqual(errStrings.length, process.stderr.writeTimes);

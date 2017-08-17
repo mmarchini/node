@@ -55,7 +55,7 @@ if (!common.hasIntl) {
 } else {
   const erMsg =
     `"Intl" object is present but v8_enable_i18n_support is ${
-    enablei18n}. Is this test out of date?`;
+      enablei18n}. Is this test out of date?`;
   assert.strictEqual(enablei18n, 1, erMsg);
 
   // Construct a new date at the beginning of Unix time
@@ -65,9 +65,11 @@ if (!common.hasIntl) {
   const GMT = 'Etc/GMT';
 
   // Construct an English formatter. Should format to "Jan 70"
-  const dtf =
-      new Intl.DateTimeFormat(['en'],
-                              {timeZone: GMT, month: 'short', year: '2-digit'});
+  const dtf = new Intl.DateTimeFormat(['en'], {
+    timeZone: GMT,
+    month: 'short',
+    year: '2-digit'
+  });
 
   // If list is specified and doesn't contain 'en' then return.
   if (process.config.variables.icu_locales && !haveLocale('en')) {
@@ -89,7 +91,7 @@ if (!common.hasIntl) {
     assert.strictEqual(localeString, 'Jan 70');
   }
   // Options to request GMT
-  const optsGMT = {timeZone: GMT};
+  const optsGMT = { timeZone: GMT };
 
   // Test format
   {

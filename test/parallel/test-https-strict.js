@@ -143,9 +143,9 @@ function makeReq(path, port, error, host, ca) {
   }
   const req = https.get(options);
   const server = port === server1.address().port ? server1 :
-      port === server2.address().port ? server2 :
+    port === server2.address().port ? server2 :
       port === server3.address().port ? server3 :
-      null;
+        null;
   if (!server) throw new Error(`invalid port: ${port}`);
   server.expectCount++;
 
@@ -170,13 +170,9 @@ function allListening() {
 
   // server1: host 'agent1', signed by ca1
   makeReq('/inv1', port1, 'UNABLE_TO_VERIFY_LEAF_SIGNATURE');
-  makeReq('/inv1-ca1', port1,
-          'Hostname/IP doesn\'t match certificate\'s altnames: ' +
-              '"Host: localhost. is not cert\'s CN: agent1"',
+  makeReq('/inv1-ca1', port1, 'ERR_TLS_CERT_ALTNAME_INVALID',
           null, ca1);
-  makeReq('/inv1-ca1ca2', port1,
-          'Hostname/IP doesn\'t match certificate\'s altnames: ' +
-              '"Host: localhost. is not cert\'s CN: agent1"',
+  makeReq('/inv1-ca1ca2', port1, 'ERR_TLS_CERT_ALTNAME_INVALID',
           null, [ca1, ca2]);
   makeReq('/val1-ca1', port1, null, 'agent1', ca1);
   makeReq('/val1-ca1ca2', port1, null, 'agent1', [ca1, ca2]);
@@ -193,13 +189,8 @@ function allListening() {
 
   // server3: host 'agent3', signed by ca2
   makeReq('/inv3', port3, 'UNABLE_TO_VERIFY_LEAF_SIGNATURE');
-  makeReq('/inv3-ca2', port3,
-          'Hostname/IP doesn\'t match certificate\'s altnames: ' +
-              '"Host: localhost. is not cert\'s CN: agent3"',
-          null, ca2);
-  makeReq('/inv3-ca1ca2', port3,
-          'Hostname/IP doesn\'t match certificate\'s altnames: ' +
-              '"Host: localhost. is not cert\'s CN: agent3"',
+  makeReq('/inv3-ca2', port3, 'ERR_TLS_CERT_ALTNAME_INVALID', null, ca2);
+  makeReq('/inv3-ca1ca2', port3, 'ERR_TLS_CERT_ALTNAME_INVALID',
           null, [ca1, ca2]);
   makeReq('/val3-ca2', port3, null, 'agent3', ca2);
   makeReq('/val3-ca1ca2', port3, null, 'agent3', [ca1, ca2]);

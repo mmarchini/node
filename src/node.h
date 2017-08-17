@@ -253,6 +253,27 @@ NODE_EXTERN void RunAtExit(Environment* env);
   }                                                                           \
   while (0)
 
+#define NODE_DEFINE_HIDDEN_CONSTANT(target, constant)                         \
+  do {                                                                        \
+    v8::Isolate* isolate = target->GetIsolate();                              \
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();            \
+    v8::Local<v8::String> constant_name =                                     \
+        v8::String::NewFromUtf8(isolate, #constant,                           \
+                                v8::NewStringType::kInternalized)             \
+                                  .ToLocalChecked();                          \
+    v8::Local<v8::Number> constant_value =                                    \
+        v8::Number::New(isolate, static_cast<double>(constant));              \
+    v8::PropertyAttribute constant_attributes =                               \
+        static_cast<v8::PropertyAttribute>(v8::ReadOnly |                     \
+                                           v8::DontDelete |                   \
+                                           v8::DontEnum);                     \
+    (target)->DefineOwnProperty(context,                                      \
+                                constant_name,                                \
+                                constant_value,                               \
+                                constant_attributes).FromJust();              \
+  }                                                                           \
+  while (0)
+
 // Used to be a macro, hence the uppercase name.
 inline void NODE_SET_METHOD(v8::Local<v8::Template> recv,
                             const char* name,
@@ -533,17 +554,9 @@ NODE_EXTERN void AddPromiseHook(v8::Isolate* isolate,
  * zero then no execution has been set. This will happen if the user handles
  * I/O from native code. */
 NODE_EXTERN async_id AsyncHooksGetExecutionAsyncId(v8::Isolate* isolate);
-/* legacy alias */
-NODE_EXTERN NODE_DEPRECATED("Use AsyncHooksGetExecutionAsyncId(isolate)",
-                async_id AsyncHooksGetCurrentId(v8::Isolate* isolate));
-
 
 /* Return same value as async_hooks.triggerAsyncId(); */
 NODE_EXTERN async_id AsyncHooksGetTriggerAsyncId(v8::Isolate* isolate);
-/* legacy alias */
-NODE_EXTERN NODE_DEPRECATED("Use AsyncHooksGetTriggerAsyncId(isolate)",
-                async_id AsyncHooksGetTriggerId(v8::Isolate* isolate));
-
 
 /* If the native API doesn't inherit from the helper class then the callbacks
  * must be triggered manually. This triggers the init() callback. The return
@@ -642,12 +655,6 @@ class AsyncResource {
     v8::Local<v8::Object> get_resource() {
       return resource_.Get(isolate_);
     }
-
-    NODE_DEPRECATED("Use AsyncResource::get_async_id()",
-      async_id get_uid() const {
-        return get_async_id();
-      }
-    )
 
     async_id get_async_id() const {
       return async_context_.async_id;

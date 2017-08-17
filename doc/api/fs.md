@@ -1639,8 +1639,10 @@ Read data from the file specified by `fd`.
 
 `length` is an integer specifying the number of bytes to read.
 
-`position` is an integer specifying where to begin reading from in the file.
-If `position` is `null`, data will be read from the current file position.
+`position` is an argument specifying where to begin reading from in the file.
+If `position` is `null`, data will be read from the current file position,
+and the file position will be updated.
+If `position` is an integer, the file position will remain unchanged.
 
 The callback is given the three arguments, `(err, bytesRead, buffer)`.
 
@@ -2004,6 +2006,9 @@ changes:
 Asynchronous rmdir(2). No arguments other than a possible exception are given
 to the completion callback.
 
+*Note*: Using `fs.rmdir()` on a file (not a directory) results in an `ENOENT`
+error on Windows and an `ENOTDIR` error on POSIX.
+
 ## fs.rmdirSync(path)
 <!-- YAML
 added: v0.1.21
@@ -2017,6 +2022,9 @@ changes:
 * `path` {string|Buffer|URL}
 
 Synchronous rmdir(2). Returns `undefined`.
+
+*Note*: Using `fs.rmdirSync()` on a file (not a directory) results in an `ENOENT`
+error on Windows and an `ENOTDIR` error on POSIX.
 
 ## fs.stat(path, callback)
 <!-- YAML

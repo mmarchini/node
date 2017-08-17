@@ -1,9 +1,9 @@
 'use strict';
 // Flags: --expose_internals
 
-const common = require('../common');
-const path = require('path');
+require('../common');
 const assert = require('assert');
+const fixtures = require('../common/fixtures');
 
 const binding = process.binding('util');
 const kArrowMessagePrivateSymbolIndex = binding['arrow_message_private_symbol'];
@@ -32,8 +32,8 @@ assert.throws(getHiddenValue({}), errMessageIndex);
 assert.throws(getHiddenValue({}, null), errMessageIndex);
 assert.throws(getHiddenValue({}, []), errMessageIndex);
 assert.deepStrictEqual(
-    binding.getHiddenValue({}, kArrowMessagePrivateSymbolIndex),
-    undefined);
+  binding.getHiddenValue({}, kArrowMessagePrivateSymbolIndex),
+  undefined);
 
 assert.throws(setHiddenValue(), errMessageObj);
 assert.throws(setHiddenValue(null, 'foo'), errMessageObj);
@@ -45,16 +45,16 @@ assert.throws(setHiddenValue({}, null), errMessageIndex);
 assert.throws(setHiddenValue({}, []), errMessageIndex);
 const obj = {};
 assert.strictEqual(
-    binding.setHiddenValue(obj, kArrowMessagePrivateSymbolIndex, 'bar'),
-    true);
+  binding.setHiddenValue(obj, kArrowMessagePrivateSymbolIndex, 'bar'),
+  true);
 assert.strictEqual(
-    binding.getHiddenValue(obj, kArrowMessagePrivateSymbolIndex),
-    'bar');
+  binding.getHiddenValue(obj, kArrowMessagePrivateSymbolIndex),
+  'bar');
 
 let arrowMessage;
 
 try {
-  require(path.join(common.fixturesDir, 'syntax', 'bad_syntax'));
+  require(fixtures.path('syntax', 'bad_syntax'));
 } catch (err) {
   arrowMessage =
       binding.getHiddenValue(err, kArrowMessagePrivateSymbolIndex);
