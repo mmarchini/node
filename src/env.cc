@@ -27,20 +27,20 @@ using v8::StackTrace;
 Environment *Environment::currentEnvironment = nullptr;
 
 // General stuff
-uint64_t nodedbg_currentEnvironment = (uint64_t) &Environment::currentEnvironment;
-size_t nodedbg_class__BaseObject__persistant_handle = (size_t) &(((AsyncWrap*)0)->persistent_handle_);  // private
+// uint64_t nodedbg_currentEnvironment = (uint64_t) &Environment::currentEnvironment;
+// size_t nodedbg_class__BaseObject__persistant_handle = (size_t) &(((AsyncWrap*)0)->persistent_handle_);  // private
 
 // Handle queue
-size_t nodedbg_class__Environment__handleWrapQueue = (size_t) (((Environment*)0)->handle_wrap_queue());
-size_t nodedbg_class__HandleWrap__node = (size_t) &(((HandleWrap*)0)->handle_wrap_queue_);  // private
-size_t nodedbg_class__HandleWrapQueue__headOffset = (size_t) &(((Environment::HandleWrapQueue*)0)->head_);  // private
-size_t nodedbg_class__HandleWrapQueue__nextOffset = (size_t) &(((ListNode<HandleWrap>*)0)->next_);  // private
+// size_t nodedbg_class__Environment__handleWrapQueue = (size_t) (((Environment*)0)->handle_wrap_queue());
+// size_t nodedbg_class__HandleWrap__node = (size_t) &(((HandleWrap*)0)->handle_wrap_queue_);  // private
+// size_t nodedbg_class__HandleWrapQueue__headOffset = (size_t) &(((Environment::HandleWrapQueue*)0)->head_);  // private
+// size_t nodedbg_class__HandleWrapQueue__nextOffset = (size_t) &(((ListNode<HandleWrap>*)0)->next_);  // private
 
 // Request queue
-size_t nodedbg_class__Environment__reqWrapQueue = (size_t) (((Environment*)0)->req_wrap_queue());
-size_t nodedbg_class__ReqWrap__node = (size_t) &(((ReqWrap<uv_req_t>*)0)->req_wrap_queue_);  // private
-size_t nodedbg_class__ReqWrapQueue__headOffset = (size_t) &(((Environment::ReqWrapQueue*)0)->head_);  // private
-size_t nodedbg_class__ReqWrapQueue__nextOffset = (size_t) &(((ListNode<ReqWrap<uv_req_t>>*)0)->next_);  // private
+// size_t nodedbg_class__Environment__reqWrapQueue = (size_t) (((Environment*)0)->req_wrap_queue());
+// size_t nodedbg_class__ReqWrap__node = (size_t) &(((ReqWrap<uv_req_t>*)0)->req_wrap_queue_);  // private
+// size_t nodedbg_class__ReqWrapQueue__headOffset = (size_t) &(((Environment::ReqWrapQueue*)0)->head_);  // private
+// size_t nodedbg_class__ReqWrapQueue__nextOffset = (size_t) &(((ListNode<ReqWrap<uv_req_t>>*)0)->next_);  // private
 // XXX Persistant handle
 
 

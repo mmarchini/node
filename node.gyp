@@ -708,7 +708,28 @@
           'ldflags': [ '-I<(SHARED_INTERMEDIATE_DIR)' ]
         }],
       ]
-    }
+    },
+    {
+      'target_name': 'node-postmortem-metadata',
+      'type': 'none',
+      'variables': {},
+      'actions': [
+        {
+          'action_name': 'gen-postmortem-metadata',
+          'inputs': [
+            './tools/gen-postmortem-metadata.py',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/node-debug-support.cc',
+          ],
+          'action': [
+            'python',
+            './tools/gen-postmortem-metadata.py',
+            '<@(_outputs)',
+          ]
+        }
+      ]
+    },
   ], # end targets
 
   'conditions': [
