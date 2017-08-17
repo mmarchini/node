@@ -230,6 +230,13 @@
     [ 'node_no_browser_globals=="true"', {
       'defines': [ 'NODE_NO_BROWSER_GLOBALS' ],
     } ],
+    [ 'node_postmortem_support=="true"', {
+      'dependencies': [ 'node-postmortem-metadata' ],
+      'defines': [ 'NODE_POSTMORTEM_SUPPORT' ],
+      'sources': [
+        '<(SHARED_INTERMEDIATE_DIR)/node-debug-support.cc'
+      ]
+    }],
     [ 'node_use_bundled_v8=="true" and v8_postmortem_support=="true"', {
       'dependencies': [ 'deps/v8/src/v8.gyp:postmortem-metadata' ],
       'conditions': [

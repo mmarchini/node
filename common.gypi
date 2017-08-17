@@ -50,6 +50,7 @@
       }, {
         'os_posix': 1,
         'v8_postmortem_support%': 'true',
+        'node_postmortem_support%': 'true',
       }],
       ['OS== "mac"', {
         'OBJ_DIR%': '<(PRODUCT_DIR)/obj.target',

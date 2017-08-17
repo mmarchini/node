@@ -361,6 +361,7 @@ class IsolateData {
 
 class Environment {
  public:
+  static Environment *currentEnvironment;
   class AsyncHooks {
    public:
     // Reason for both UidFields and Fields are that one is stored as a double*

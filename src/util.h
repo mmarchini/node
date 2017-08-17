@@ -156,6 +156,9 @@ class ListNode {
   inline ~ListNode();
   inline void Remove();
   inline bool IsEmpty() const;
+  #ifdef NODE_POSTMORTEM_SUPPORT
+    inline ListNode** next() { return &next_; }
+  #endif
 
  private:
   template <typename U, ListNode<U> (U::*M)> friend class ListHead;
@@ -188,6 +191,11 @@ class ListHead {
   inline T* PopFront();
   inline Iterator begin() const;
   inline Iterator end() const;
+
+  #ifdef NODE_POSTMORTEM_SUPPORT
+    inline ListNode<T> *head() { return &head_; }
+  #endif
+
 
  private:
   ListNode<T> head_;

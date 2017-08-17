@@ -4528,6 +4528,7 @@ inline int Start(Isolate* isolate, IsolateData* isolate_data,
   Local<Context> context = Context::New(isolate);
   Context::Scope context_scope(context);
   Environment env(isolate_data, context);
+  Environment::currentEnvironment = &env;
   CHECK_EQ(0, uv_key_create(&thread_local_env));
   uv_key_set(&thread_local_env, &env);
   env.Start(argc, argv, exec_argc, exec_argv, v8_is_profiling);

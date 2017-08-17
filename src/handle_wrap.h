@@ -70,6 +70,13 @@ class HandleWrap : public AsyncWrap {
 
   inline uv_handle_t* GetHandle() const { return handle_; }
 
+  #ifdef NODE_POSTMORTEM_SUPPORT
+    inline ListNode<HandleWrap> *handle_wrap_queue() {
+      return &handle_wrap_queue_;
+    }
+  #endif
+
+
  protected:
   HandleWrap(Environment* env,
              v8::Local<v8::Object> object,

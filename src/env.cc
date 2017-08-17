@@ -1,6 +1,7 @@
 #include "env.h"
 #include "env-inl.h"
 #include "async-wrap.h"
+#include "base-object.h"
 #include "v8.h"
 #include "v8-profiler.h"
 
@@ -22,6 +23,8 @@ using v8::Local;
 using v8::Message;
 using v8::StackFrame;
 using v8::StackTrace;
+
+Environment *Environment::currentEnvironment;
 
 void Environment::Start(int argc,
                         const char* const* argv,

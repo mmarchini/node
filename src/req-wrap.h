@@ -19,6 +19,10 @@ class ReqWrap : public AsyncWrap {
   inline ~ReqWrap() override;
   inline void Dispatched();  // Call this after the req has been dispatched.
   T* req() { return &req_; }
+  #ifdef NODE_POSTMORTEM_SUPPORT
+    inline ListNode<ReqWrap> *req_wrap_queue() { return &req_wrap_queue_; }
+  #endif
+
 
  private:
   friend class Environment;
