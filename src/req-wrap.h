@@ -21,6 +21,7 @@ class ReqWrap : public AsyncWrap {
   T* req() { return &req_; }
 
  private:
+  ALLOW_DEBUG_SYMBOLS
   friend class Environment;
   ListNode<ReqWrap> req_wrap_queue_;
 

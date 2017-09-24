@@ -172,6 +172,7 @@
 
       'dependencies': [
         'node_js2c#host',
+        'node_postmortem_metadata#host',
         'deps/nghttp2/nghttp2.gyp:nghttp2'
       ],
 
@@ -295,6 +296,7 @@
         # node.gyp is added to the project by default.
         'common.gypi',
         '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
+        '<(SHARED_INTERMEDIATE_DIR)/node-debug-support.cc',
       ],
 
       'defines': [
@@ -743,7 +745,29 @@
           'ldflags': [ '-I<(SHARED_INTERMEDIATE_DIR)' ]
         }],
       ]
-    }
+    },
+    {
+      'target_name': 'node_postmortem_metadata',
+      'type': 'none',
+      'toolsets': ['host'],
+      'actions': [
+        {
+          'action_name': 'gen-postmortem-metadata',
+          'process_outputs_as_sources': 1,
+          'inputs': [
+            './tools/gen-postmortem-metadata.py',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/node-debug-support.cc',
+          ],
+          'action': [
+            'python',
+            './tools/gen-postmortem-metadata.py',
+            '<@(_outputs)',
+          ]
+        }
+      ]
+    },
   ], # end targets
 
   'conditions': [
