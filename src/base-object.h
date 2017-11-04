@@ -25,6 +25,7 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include "v8.h"
+#include "util.h"
 
 namespace node {
 
@@ -59,6 +60,7 @@ class BaseObject {
   inline void ClearWeak();
 
  private:
+  ALLOW_DEBUG_SYMBOLS
   BaseObject();
 
   template <typename Type>
