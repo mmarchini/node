@@ -701,7 +701,6 @@ class Environment {
   bool EmitNapiWarning();
 
  private:
-  ALLOW_DEBUG_SYMBOLS
   inline void ThrowError(v8::Local<v8::Value> (*fun)(v8::Local<v8::String>),
                          const char* errmsg);
 

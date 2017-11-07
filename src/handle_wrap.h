@@ -78,7 +78,6 @@ class HandleWrap : public AsyncWrap {
   ~HandleWrap() override;
 
  private:
-  ALLOW_DEBUG_SYMBOLS
   friend class Environment;
   friend void GetActiveHandles(const v8::FunctionCallbackInfo<v8::Value>&);
   static void OnClose(uv_handle_t* handle);

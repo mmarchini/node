@@ -65,11 +65,6 @@ inline char* Calloc(size_t n);
 inline char* UncheckedMalloc(size_t n);
 inline char* UncheckedCalloc(size_t n);
 
-
-// Used to make all members of a class visible when creating debug symbol (see
-// tools/gen-postmortem-metadata.py)
-#define ALLOW_DEBUG_SYMBOLS friend int genDebugSymbols();
-
 // Used by the allocation functions when allocation fails.
 // Thin wrapper around v8::Isolate::LowMemoryNotification() that checks
 // whether V8 is initialized.
@@ -163,7 +158,6 @@ class ListNode {
   inline bool IsEmpty() const;
 
  private:
-  ALLOW_DEBUG_SYMBOLS
   template <typename U, ListNode<U> (U::*M)> friend class ListHead;
   ListNode* prev_;
   ListNode* next_;
@@ -180,7 +174,6 @@ class ListHead {
     inline bool operator!=(const Iterator& that) const;
 
    private:
-    ALLOW_DEBUG_SYMBOLS
     friend class ListHead;
     inline explicit Iterator(ListNode<T>* node);
     ListNode<T>* node_;
@@ -197,7 +190,6 @@ class ListHead {
   inline Iterator end() const;
 
  private:
-  ALLOW_DEBUG_SYMBOLS
   ListNode<T> head_;
   DISALLOW_COPY_AND_ASSIGN(ListHead);
 };
