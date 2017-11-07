@@ -8,6 +8,7 @@
 #
 
 import os
+import fnmatch
 import re
 from glob import glob
 import sys
@@ -155,12 +156,14 @@ def get_standard_includes():
   ''' Try to find all standard C++ headers needed by node '''
   includes = set()
   regex = re.compile('#include *<([a-zA-Z0-9\-_]*)>')
-  for file in glob(os.path.join('src', '*.h')):
-    f = open(file, 'r')
-    for line in f.readlines():
-      match = regex.match(line)
-      if match:
-        includes.add(match.group(1))
+  for src in ["src", "deps"]:
+    for root, dirnames, filenames in os.walk(src):
+      for filename in fnmatch.filter(filenames, '*.h'):
+        f = open(os.path.join(root, filename), 'r')
+        for line in f.readlines():
+          match = regex.match(line)
+          if match:
+            includes.add(match.group(1))
   return sorted(includes)
 
 def create_symbols_file():
