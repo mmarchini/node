@@ -298,6 +298,7 @@
         # node.gyp is added to the project by default.
         'common.gypi',
         '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
+        '<(SHARED_INTERMEDIATE_DIR)/node-debug-support.cc',
       ],
 
       'variables': {
@@ -970,7 +971,29 @@
             }]]
         }],
       ]
-    }
+    },
+    {
+      'target_name': 'node_postmortem_metadata',
+      'type': 'none',
+      'toolsets': ['host'],
+      'actions': [
+        {
+          'action_name': 'gen-postmortem-metadata',
+          'process_outputs_as_sources': 1,
+          'inputs': [
+            './tools/gen-postmortem-metadata.py',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/node-debug-support.cc',
+          ],
+          'action': [
+            'python',
+            './tools/gen-postmortem-metadata.py',
+            '<@(_outputs)',
+          ]
+        }
+      ]
+    },
   ], # end targets
 
   'conditions': [
