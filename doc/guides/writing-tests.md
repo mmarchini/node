@@ -312,7 +312,7 @@ TEST_F(EnvTest, RunAtExit) {
   v8::Local<v8::Context> context = v8::Context::New(isolate_);
   node::IsolateData* isolateData = node::CreateIsolateData(isolate_, uv_default_loop());
   Argv argv{"node", "-e", ";"};
-  auto env = Environment:CreateEnvironment(isolateData, context, 1, *argv, 2, *argv);
+  auto env = node::CreateEnvironment(isolateData, context, 1, *argv, 2, *argv);
   node::AtExit(at_exit_callback);
   node::RunAtExit(env);
   EXPECT_TRUE(called_cb);
