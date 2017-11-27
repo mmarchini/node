@@ -20,43 +20,7 @@ static void at_exit_callback1(void* arg);
 static void at_exit_callback2(void* arg);
 static std::string cb_1_arg;  // NOLINT(runtime/string)
 
-class EnvironmentTest : public NodeTestFixture {
- public:
-  class Env {
-   public:
-    Env(const v8::HandleScope& handle_scope,
-        v8::Isolate* isolate,
-        const Argv& argv,
-        NodeTestFixture* test_fixture) {
-      context_ = v8::Context::New(isolate);
-      CHECK(!context_.IsEmpty());
-      isolate_data_ = CreateIsolateData(isolate,
-                                        NodeTestFixture::CurrentLoop(),
-                                        test_fixture->Platform());
-      CHECK_NE(nullptr, isolate_data_);
-      environment_ = CreateEnvironment(isolate_data_,
-                                       context_,
-                                       1, *argv,
-                                       argv.nr_args(), *argv);
-      CHECK_NE(nullptr, environment_);
-    }
-
-    ~Env() {
-      environment_->CleanupHandles();
-      FreeEnvironment(environment_);
-      FreeIsolateData(isolate_data_);
-    }
-
-    Environment* operator*() const {
-      return environment_;
-    }
-
-   private:
-    v8::Local<v8::Context> context_;
-    IsolateData* isolate_data_;
-    Environment* environment_;
-  };
-
+class EnvironmentTest : public EnvironmentTestFixture {
  private:
   virtual void TearDown() {
     NodeTestFixture::TearDown();
