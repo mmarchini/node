@@ -721,6 +721,12 @@ class Environment {
   std::unique_ptr<inspector::Agent> inspector_agent_;
 #endif
 
+  // handle_wrap_queue_ and req_wrap_queue_ needs to be at a fixed offset from
+  // the start of the class because it is used by
+  // tools/gen-postmortem-metadata.py to calculate offsets and generate debug
+  // symbols for Environment, which assumes that the position of members in
+  // memory are predictable. Because of that, there must be no variable-size
+  // members before handle_wrap_queue_ or req_wrap_queue_
   HandleWrapQueue handle_wrap_queue_;
   ReqWrapQueue req_wrap_queue_;
   ListHead<HandleCleanup,

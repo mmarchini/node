@@ -27,9 +27,12 @@ class ReqWrap : public AsyncWrap {
  protected:
   // req_wrap_queue_ needs to be at a fixed offset from the start of the class
   // because it is used by ContainerOf to calculate the address of the embedding
-  // ReqWrap. ContainerOf compiles down to simple, fixed pointer arithmetic.
-  // sizeof(req_) depends on the type of T, so req_wrap_queue_ would
-  // no longer be at a fixed offset if it came after req_.
+  // ReqWrap. ContainerOf compiles down to simple, fixed pointer arithmetic. It
+  // is also used by by tools/gen-postmortem-metadata.py to calculate offsets
+  // and generate debug symbols for ReqWrap, which assumes that the position of
+  // members in memory are predictable. sizeof(req_) depends on the type of T,
+  // so req_wrap_queue_ would  no longer be at a fixed offset if it came after
+  // req_.
   T req_;
 };
 
