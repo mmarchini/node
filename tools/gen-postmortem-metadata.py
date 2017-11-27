@@ -7,18 +7,19 @@
 # debugging tools.
 #
 
-import os
-import fnmatch
-import re
-from glob import glob
 import sys
+
+
+if len(sys.argv) < 3:
+  print('usage: {0} output.cc test_output.cc'.format(sys.argv[0]))
+  sys.exit(2)
 
 
 class DebugSymbol(object):
   type_ = 'int'
   _prefix = 'nodedbg_'
 
-  def __init__(self, name, value, headers=[], type_=None):
+  def __init__(self, name, value, headers=[], type_=None, test=None):
     self.name = name
     self.value = value
     self.headers = headers
@@ -60,26 +61,26 @@ class DebugSymbol(object):
 
 
 debug_symbols = [
-  DebugSymbol(
+  DebugSymbol(  # Done
     name='environment_context_idx_embedder_data',
     value='Environment::kContextEmbedderDataIndex',
     headers=['env.h'],
     type_='int',
   ),
-  DebugSymbol(
+  DebugSymbol(  # Done
     name='class__BaseObject__persistent_handle',
     value='nonstandard_offsetof(BaseObject, persistent_handle_)',
     headers=['base_object-inl.h'],
     type_='size_t',
   ),
-  DebugSymbol(
+  DebugSymbol(  # Done
     name='class__Environment__handleWrapQueue',
     value='nonstandard_offsetof(Environment, handle_wrap_queue_)',
     headers=['env.h'],
     type_='size_t',
   ),
   DebugSymbol(
-    name='class__HandleWrap__node',
+    name='class__HandleWrap__list',
     value='nonstandard_offsetof(HandleWrap, handle_wrap_queue_)',
     headers=['handle_wrap.h'],
     type_='size_t',
@@ -96,7 +97,7 @@ debug_symbols = [
     headers=['handle_wrap.h', 'util.h'],
     type_='size_t',
   ),
-  DebugSymbol(
+  DebugSymbol(  # Done
     name='class__Environment__reqWrapQueue',
     value='nonstandard_offsetof(Environment, req_wrap_queue_)',
     headers=['env.h'],
@@ -170,8 +171,7 @@ def get_standard_includes():
   return includes
 
 
-def create_symbols_file():
-  out = file(sys.argv[1], 'w')
+def render_symbols_file():
   headers = DebugSymbol.get_headers(debug_symbols)
   includes = ['#include "{0}"'.format(header) for header in headers]
   includes = '\n'.join(includes)
@@ -183,18 +183,27 @@ def create_symbols_file():
   declare_symbols = '\n'.join([symbol.declare for symbol in debug_symbols])
   fill_symbols = '\n'.join([symbol.fill for symbol in debug_symbols])
 
-  out.write(template.format(
+  return template.format(
     filename=sys.argv[0],
     includes=includes,
     standard_includes=standard_includes,
     declare_symbols=declare_symbols,
     fill_symbols=fill_symbols,
-  ))
+  )
 
 
-if len(sys.argv) < 2:
-  print('usage: {0} output.cc'.format(sys.argv[0]))
-  sys.exit(2)
+def create_symbols_file():
+  out = file(sys.argv[1], 'w')
+  out.write(render_symbols_file())
+
+
+def create_test_file():
+  test_template = file('test/cctest/test_node_debug_support.cc').read()
+  out = file(sys.argv[2], 'w')
+  out.write(
+    test_template.replace('/* {{debug_symbols_file}} */', render_symbols_file())
+  )
 
 
 create_symbols_file()
+create_test_file()

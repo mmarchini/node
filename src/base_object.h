@@ -65,6 +65,11 @@ class BaseObject {
   static inline void WeakCallback(
       const v8::WeakCallbackInfo<Type>& data);
 
+  // persistent_handle_ needs to be at a fixed offset from the start of the
+  // class because it is used by tools/gen-postmortem-metadata.py to calculate
+  // offsets and generate debug symbols for BaseObject, which assumes that the
+  // position of members in memory are predictable. Because of that, there must
+  // be no variable-size members before persistent_handle_
   v8::Persistent<v8::Object> persistent_handle_;
   Environment* env_;
 };

@@ -298,7 +298,7 @@
         # node.gyp is added to the project by default.
         'common.gypi',
         '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
-        '<(SHARED_INTERMEDIATE_DIR)/node-debug-support.cc',
+        '<(SHARED_INTERMEDIATE_DIR)/node_debug_support.cc',
       ],
 
       'variables': {
@@ -824,6 +824,8 @@
         'test/cctest/node_test_fixture.cc',
         'test/cctest/test_aliased_buffer.cc',
         'test/cctest/test_base64.cc',
+        'src/handle_wrap.cc',
+        '<(SHARED_INTERMEDIATE_DIR)/test_node_debug_support.cc',
         'test/cctest/test_environment.cc',
         'test/cctest/test_util.cc',
         'test/cctest/test_url.cc'
@@ -984,7 +986,8 @@
             './tools/gen-postmortem-metadata.py',
           ],
           'outputs': [
-            '<(SHARED_INTERMEDIATE_DIR)/node-debug-support.cc',
+            '<(SHARED_INTERMEDIATE_DIR)/node_debug_support.cc',
+            '<(SHARED_INTERMEDIATE_DIR)/test_node_debug_support.cc',
           ],
           'action': [
             'python',
