@@ -5,6 +5,7 @@
 #include "gtest/gtest.h"
 #include "node.h"
 #include "node_platform.h"
+#include "node_internals.h"
 #include "env.h"
 #include "v8.h"
 #include "libplatform/libplatform.h"
@@ -107,6 +108,49 @@ class NodeTestFixture : public ::testing::Test {
 
  private:
   node::NodePlatform* platform_ = nullptr;
+};
+
+
+class EnvironmentTestFixture : public NodeTestFixture {
+ public:
+  class Env {
+   public:
+    Env(const v8::HandleScope& handle_scope,
+        v8::Isolate* isolate,
+        const Argv& argv,
+        NodeTestFixture* test_fixture) {
+      context_ = node::NewContext(isolate);
+      CHECK(!context_.IsEmpty());
+      context_scope_ = new v8::Context::Scope(context_);
+
+      isolate_data_ = node::CreateIsolateData(isolate,
+                                        NodeTestFixture::CurrentLoop(),
+                                        test_fixture->Platform());
+      CHECK_NE(nullptr, isolate_data_);
+      environment_ = node::CreateEnvironment(isolate_data_,
+                                       context_,
+                                       1, *argv,
+                                       argv.nr_args(), *argv);
+      CHECK_NE(nullptr, environment_);
+    }
+
+    ~Env() {
+      environment_->CleanupHandles();
+      node::FreeEnvironment(environment_);
+      node::FreeIsolateData(isolate_data_);
+      delete context_scope_;
+    }
+
+    node::Environment* operator*() const {
+      return environment_;
+    }
+
+   private:
+    v8::Local<v8::Context> context_;
+    v8::Context::Scope *context_scope_;
+    node::IsolateData* isolate_data_;
+    node::Environment* environment_;
+  };
 };
 
 #endif  // TEST_CCTEST_NODE_TEST_FIXTURE_H_
