@@ -386,6 +386,20 @@ class IsolateData {
 
 class Environment {
  public:
+  typedef ListHead<HandleWrap, &HandleWrap::handle_wrap_queue_> HandleWrapQueue;
+  typedef ListHead<ReqWrap<uv_req_t>, &ReqWrap<uv_req_t>::req_wrap_queue_>
+          ReqWrapQueue;
+ private:
+  // handle_wrap_queue_ and req_wrap_queue_ needs to be at a fixed offset from
+  // the start of the class because it is used by
+  // tools/gen-postmortem-metadata.py to calculate offsets and generate debug
+  // symbols for Environment, which assumes that the position of members in
+  // memory are predictable. Because of that, there must be no variable-size
+  // members before handle_wrap_queue_ or req_wrap_queue_
+  HandleWrapQueue handle_wrap_queue_;
+  ReqWrapQueue req_wrap_queue_;
+
+ public:
   class AsyncHooks {
    public:
     // Reason for both UidFields and Fields are that one is stored as a double*
@@ -672,10 +686,6 @@ class Environment {
   }
 #endif
 
-  typedef ListHead<HandleWrap, &HandleWrap::handle_wrap_queue_> HandleWrapQueue;
-  typedef ListHead<ReqWrap<uv_req_t>, &ReqWrap<uv_req_t>::req_wrap_queue_>
-          ReqWrapQueue;
-
   inline HandleWrapQueue* handle_wrap_queue() { return &handle_wrap_queue_; }
   inline ReqWrapQueue* req_wrap_queue() { return &req_wrap_queue_; }
 
@@ -721,14 +731,6 @@ class Environment {
   std::unique_ptr<inspector::Agent> inspector_agent_;
 #endif
 
-  // handle_wrap_queue_ and req_wrap_queue_ needs to be at a fixed offset from
-  // the start of the class because it is used by
-  // tools/gen-postmortem-metadata.py to calculate offsets and generate debug
-  // symbols for Environment, which assumes that the position of members in
-  // memory are predictable. Because of that, there must be no variable-size
-  // members before handle_wrap_queue_ or req_wrap_queue_
-  HandleWrapQueue handle_wrap_queue_;
-  ReqWrapQueue req_wrap_queue_;
   ListHead<HandleCleanup,
            &HandleCleanup::handle_cleanup_queue_> handle_cleanup_queue_;
   int handle_cleanup_waiting_;

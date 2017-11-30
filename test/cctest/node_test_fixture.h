@@ -145,8 +145,9 @@ class EnvironmentTestFixture : public NodeTestFixture {
       return environment_;
     }
 
-   private:
     v8::Local<v8::Context> context_;
+
+   private:
     v8::Context::Scope *context_scope_;
     node::IsolateData* isolate_data_;
     node::Environment* environment_;
