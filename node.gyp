@@ -824,7 +824,6 @@
         'test/cctest/node_test_fixture.cc',
         'test/cctest/test_aliased_buffer.cc',
         'test/cctest/test_base64.cc',
-        'src/handle_wrap.cc',  # TODO (mmarchini): remove, this causes undefined behavior
         '<(SHARED_INTERMEDIATE_DIR)/test_node_debug_support.cc',
         'test/cctest/test_environment.cc',
         'test/cctest/test_util.cc',

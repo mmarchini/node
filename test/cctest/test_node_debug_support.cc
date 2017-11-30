@@ -11,6 +11,10 @@
 #include "node_internals.h"
 #include "udp_wrap.h"
 #include "v8.h"
+#include "tracing/agent.h"
+
+const int node::Environment::kContextEmbedderDataIndex;
+
 
 class DebugSymbolsTest : public EnvironmentTestFixture {
 };
@@ -25,11 +29,9 @@ class TestHandleWrap : public node::HandleWrap {
 };
 
 
-#ifndef DEBUG
 TEST_F(DebugSymbolsTest, ContextEmbedderDataIndex) {
   EXPECT_EQ(nodedbg_environment_context_idx_embedder_data, node::Environment::kContextEmbedderDataIndex);
 }
-#endif
 
 TEST_F(DebugSymbolsTest, BaseObjectPersistentHandle) {
   const v8::HandleScope handle_scope(isolate_);
@@ -39,7 +41,9 @@ TEST_F(DebugSymbolsTest, BaseObjectPersistentHandle) {
   v8::Local<v8::Object> object = v8::Object::New(isolate_);
   node::BaseObject *obj = new node::BaseObject(*env, object);
 
-  EXPECT_EQ((void *)&(obj->persistent()), (((void*)obj) + nodedbg_class__BaseObject__persistent_handle));
+  auto expected = (uintptr_t)&(obj->persistent());
+  auto calculated = (uintptr_t)((void*)obj) + nodedbg_class__BaseObject__persistent_handle;
+  EXPECT_EQ(expected, calculated);
 }
 
 
@@ -48,7 +52,9 @@ TEST_F(DebugSymbolsTest, EnvironmentHandleWrapQueue) {
   const Argv argv;
   Env env {handle_scope, isolate_, argv, this};
 
-  EXPECT_EQ((void *)((*env)->handle_wrap_queue()), (((void*)(*env)) + nodedbg_class__Environment__handleWrapQueue));
+  auto expected = (uintptr_t)((*env)->handle_wrap_queue());
+  auto calculated = ((uintptr_t)(*env)) + + nodedbg_class__Environment__handleWrapQueue;
+  EXPECT_EQ(expected, calculated);
 }
 
 TEST_F(DebugSymbolsTest, EnvironmentReqWrapQueue) {
@@ -56,12 +62,10 @@ TEST_F(DebugSymbolsTest, EnvironmentReqWrapQueue) {
   const Argv argv;
   Env env {handle_scope, isolate_, argv, this};
 
-  (*env)->req_wrap_queue();
+  // auto l = (*env)->req_wrap_queue();
   // EXPECT_EQ((void *)((*env)->req_wrap_queue()), (((void*)(*env)) + nodedbg_class__Environment__reqWrapQueue));
 }
 
-// NOTE: this test is not working
-#if 0
 TEST_F(DebugSymbolsTest, HandleWrapList) {
   v8::HandleScope handle_scope(isolate_);
   auto context = node::NewContext(isolate_);
@@ -72,6 +76,8 @@ TEST_F(DebugSymbolsTest, HandleWrapList) {
 
   uv_handle_t handle_;
 
+  node::tracing::TraceEventHelper::SetTracingController(
+    new v8::TracingController());
 
   auto obj_template = v8::FunctionTemplate::New(isolate_);
   obj_template->SetClassName(FIXED_ONE_BYTE_STRING(isolate_, "prop1"));
@@ -81,4 +87,3 @@ TEST_F(DebugSymbolsTest, HandleWrapList) {
   std::cout << "aaa 1" << std::endl;
   auto *obj = new TestHandleWrap(env, object, &handle_);
 }
-#endif
