@@ -8570,6 +8570,18 @@ Isolate* Isolate::New(const Isolate::CreateParams& params) {
   return IsolateNewImpl(isolate, params);
 }
 
+void Isolate::EnablePerfBasicProf() {
+  reinterpret_cast<i::Isolate*>(this)->logger()->EnablePerfBasicProf();
+}
+
+void Isolate::DisablePerfBasicProf() {
+  reinterpret_cast<i::Isolate*>(this)->logger()->DisablePerfBasicProf();
+}
+
+bool Isolate::IsEnabledPerfBasicProf() {
+  reinterpret_cast<i::Isolate*>(this)->logger()->IsEnabledPerfBasicProf();
+}
+
 // This is separate so that tests can provide a different |isolate|.
 Isolate* IsolateNewImpl(internal::Isolate* isolate,
                         const v8::Isolate::CreateParams& params) {

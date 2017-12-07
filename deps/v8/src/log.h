@@ -120,6 +120,13 @@ class Logger : public CodeEventListener {
   // Emits an event with a string value -> (name, value).
   void StringEvent(const char* name, const char* value);
 
+  void SetPerfBasicProf();
+  void UnsetPerfBasicProf();
+
+  void EnablePerfBasicProf();
+  void DisablePerfBasicProf();
+  bool IsEnabledPerfBasicProf();
+
   // Emits an event with an int value -> (name, value).
   void IntEvent(const char* name, int value);
   void IntPtrTEvent(const char* name, intptr_t value);

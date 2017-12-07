@@ -222,6 +222,10 @@ class PerfBasicLogger : public CodeEventLogger {
   void CodeDisableOptEvent(AbstractCode* code,
                            SharedFunctionInfo* shared) override {}
 
+  void Enable();
+  void Disable();
+  bool IsEnabled();
+
  private:
   void LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo* shared,
                          const char* name, int length) override;
@@ -231,6 +235,7 @@ class PerfBasicLogger : public CodeEventLogger {
   static const int kFilenameBufferPadding;
 
   FILE* perf_output_handle_;
+  bool enabled_ = true;
 };
 
 const char PerfBasicLogger::kFilenameFormatString[] = "/tmp/perf-%d.map";
@@ -259,8 +264,23 @@ PerfBasicLogger::~PerfBasicLogger() {
   perf_output_handle_ = NULL;
 }
 
+void PerfBasicLogger::Enable() {
+  enabled_ = true;
+}
+
+void PerfBasicLogger::Disable() {
+  enabled_ = false;
+}
+
+bool PerfBasicLogger::IsEnabled() {
+  return enabled_;
+}
+
 void PerfBasicLogger::LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo*,
                                         const char* name, int length) {
+  if (!IsEnabled()) {
+    return;
+  }
   if (FLAG_perf_basic_prof_only_functions &&
       (code->kind() != AbstractCode::FUNCTION &&
        code->kind() != AbstractCode::INTERPRETED_FUNCTION &&
@@ -1837,6 +1857,43 @@ static void PrepareLogFileName(std::ostream& os,  // NOLINT
 }
 
 
+void Logger::SetPerfBasicProf() {
+  if(perf_basic_logger_) {
+    return;
+  }
+  perf_basic_logger_ = new PerfBasicLogger();
+  addCodeEventListener(perf_basic_logger_);
+}
+
+
+void Logger::EnablePerfBasicProf() {
+  SetPerfBasicProf();
+  perf_basic_logger_->Enable();
+}
+
+void Logger::DisablePerfBasicProf() {
+  if(!perf_basic_logger_) {
+    return;
+  }
+  perf_basic_logger_->Disable();
+}
+
+bool Logger::IsEnabledPerfBasicProf() {
+  if(!perf_basic_logger_) {
+    return false;
+  }
+  return perf_basic_logger_->IsEnabled();
+}
+
+void Logger::UnsetPerfBasicProf() {
+  if (perf_basic_logger_) {
+    removeCodeEventListener(perf_basic_logger_);
+    delete perf_basic_logger_;
+    perf_basic_logger_ = NULL;
+  }
+}
+
+
 bool Logger::SetUp(Isolate* isolate) {
   // Tests and EnsureInitialize() can call this twice in a row. It's harmless.
   if (is_initialized_) return true;
@@ -1848,8 +1905,7 @@ bool Logger::SetUp(Isolate* isolate) {
   log_->Initialize(log_file_name.str().c_str());
 
   if (FLAG_perf_basic_prof) {
-    perf_basic_logger_ = new PerfBasicLogger();
-    addCodeEventListener(perf_basic_logger_);
+    SetPerfBasicProf();
   }
 
   if (FLAG_perf_prof) {
@@ -1937,11 +1993,8 @@ FILE* Logger::TearDown() {
   delete ticker_;
   ticker_ = NULL;
 
-  if (perf_basic_logger_) {
-    removeCodeEventListener(perf_basic_logger_);
-    delete perf_basic_logger_;
-    perf_basic_logger_ = NULL;
-  }
+  UnsetPerfBasicProf();
+
 
   if (perf_jit_logger_) {
     removeCodeEventListener(perf_jit_logger_);
