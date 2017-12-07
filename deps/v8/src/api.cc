@@ -7331,6 +7331,17 @@ Isolate* Isolate::GetCurrent() {
   return reinterpret_cast<Isolate*>(isolate);
 }
 
+void Isolate::EnablePerfBasicProf() {
+  reinterpret_cast<i::Isolate*>(this)->logger()->EnablePerfBasicProf();
+}
+
+void Isolate::DisablePerfBasicProf() {
+  reinterpret_cast<i::Isolate*>(this)->logger()->DisablePerfBasicProf();
+}
+
+bool Isolate::IsEnabledPerfBasicProf() {
+  reinterpret_cast<i::Isolate*>(this)->logger()->IsEnabledPerfBasicProf();
+}
 
 Isolate* Isolate::New(const Isolate::CreateParams& params) {
   i::Isolate* isolate = new i::Isolate(false);
