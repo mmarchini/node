@@ -217,6 +217,7 @@
         'src/node_os.cc',
         'src/node_platform.cc',
         'src/node_perf.cc',
+        'src/node_postmortem_metadata.cc',
         'src/node_serdes.cc',
         'src/node_trace_events.cc',
         'src/node_url.cc',
@@ -299,7 +300,6 @@
         # node.gyp is added to the project by default.
         'common.gypi',
         '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
-        '<(SHARED_INTERMEDIATE_DIR)/node_debug_support.cc',
       ],
 
       'variables': {
@@ -811,7 +811,6 @@
 
       'include_dirs': [
         'src',
-        'test/cctest',
         'tools/msvs/genfiles',
         'deps/v8/include',
         'deps/cares/include',
@@ -826,7 +825,7 @@
         'test/cctest/node_test_fixture.cc',
         'test/cctest/test_aliased_buffer.cc',
         'test/cctest/test_base64.cc',
-        '<(SHARED_INTERMEDIATE_DIR)/test_node_postmortem_metadata.cc',
+        'test/cctest/test_node_postmortem_metadata.cc',
         'test/cctest/test_environment.cc',
         'test/cctest/test_util.cc',
         'test/cctest/test_url.cc'
@@ -978,37 +977,7 @@
             }]]
         }],
       ]
-    },
-    {
-      'target_name': 'node_postmortem_metadata',
-      'type': 'none',
-      'toolsets': ['host'],
-      'sources': [
-        'src/env.h',
-        'src/base_object-inl.h',
-        'src/handle_wrap.h',
-        'src/util.h',
-        'src/req_wrap.h',
-      ],
-      'actions': [
-        {
-          'action_name': 'gen-postmortem-metadata',
-          'process_outputs_as_sources': 1,
-          'inputs': [
-            './tools/gen-postmortem-metadata.py',
-          ],
-          'outputs': [
-            '<(SHARED_INTERMEDIATE_DIR)/node_debug_support.cc',
-            '<(SHARED_INTERMEDIATE_DIR)/test_node_postmortem_metadata.cc',
-          ],
-          'action': [
-            'python',
-            './tools/gen-postmortem-metadata.py',
-            '<@(_outputs)',
-          ]
-        }
-      ]
-    },
+    }
   ], # end targets
 
   'conditions': [

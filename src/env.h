@@ -747,7 +747,7 @@ class Environment {
 
   // handle_wrap_queue_ and req_wrap_queue_ needs to be at a fixed offset from
   // the start of the class because it is used by
-  // tools/gen-postmortem-metadata.py to calculate offsets and generate debug
+  // src/node_postmortem_metadata.cc to calculate offsets and generate debug
   // symbols for Environment, which assumes that the position of members in
   // memory are predictable. For more information please refer to
   // `doc/guides/node-postmortem-support.md`

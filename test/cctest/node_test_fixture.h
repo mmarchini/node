@@ -102,12 +102,12 @@ class EnvironmentTestFixture : public NodeTestFixture {
   class Env {
    public:
     Env(const v8::HandleScope& handle_scope,
-        v8::Isolate* isolate,
         const Argv& argv,
         NodeTestFixture* test_fixture) {
+      auto isolate = handle_scope.GetIsolate();
       context_ = node::NewContext(isolate);
       CHECK(!context_.IsEmpty());
-      context_scope_ = new v8::Context::Scope(context_);
+      context_->Enter();
 
       isolate_data_ = node::CreateIsolateData(isolate,
                                               NodeTestFixture::CurrentLoop(),
@@ -124,7 +124,7 @@ class EnvironmentTestFixture : public NodeTestFixture {
       environment_->CleanupHandles();
       node::FreeEnvironment(environment_);
       node::FreeIsolateData(isolate_data_);
-      delete context_scope_;
+      context_->Exit();
     }
 
     node::Environment* operator*() const {
@@ -137,9 +137,9 @@ class EnvironmentTestFixture : public NodeTestFixture {
 
    private:
     v8::Local<v8::Context> context_;
-    v8::Context::Scope* context_scope_;
     node::IsolateData* isolate_data_;
     node::Environment* environment_;
+    DISALLOW_COPY_AND_ASSIGN(Env);
   };
 };
 

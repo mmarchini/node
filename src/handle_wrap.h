@@ -82,7 +82,7 @@ class HandleWrap : public AsyncWrap {
   friend void GetActiveHandles(const v8::FunctionCallbackInfo<v8::Value>&);
   static void OnClose(uv_handle_t* handle);
   // handle_wrap_queue_ needs to be at a fixed offset from the start of the
-  // class because it is used by tools/gen-postmortem-metadata.py to calculate
+  // class because it is used by src/node_postmortem_metadata.cc to calculate
   // offsets and generate debug symbols for HandleWrap, which assumes that the
   // position of members in memory are predictable. For more information please
   // refer to `doc/guides/node-postmortem-support.md`

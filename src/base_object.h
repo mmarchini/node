@@ -66,7 +66,7 @@ class BaseObject {
       const v8::WeakCallbackInfo<Type>& data);
 
   // persistent_handle_ needs to be at a fixed offset from the start of the
-  // class because it is used by tools/gen-postmortem-metadata.py to calculate
+  // class because it is used by src/node_postmortem_metadata.cc to calculate
   // offsets and generate debug symbols for BaseObject, which assumes that the
   // position of members in memory are predictable. For more information please
   // refer to `doc/guides/node-postmortem-support.md`

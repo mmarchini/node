@@ -18,8 +18,8 @@ Node always includes these constants in the final build.
 Node prefixes all postmortem constants with `nodedbg_`, and they complement V8
 constants by providing ways to inspect Node-specific structures, like
 `node::Environment`, `node::BaseObject` and its descendants, classes from
-`src/utils.h` and others. Those constants are provided by the script
-`tools/gen-postmortem-metadata.py`, and most of them are calculated at compile
+`src/utils.h` and others. Those constants are declared in
+`src/node_postmortem_metadata.cc`, and most of them are calculated at compile
 time.
 
 #### Calculating offset of class members
@@ -32,7 +32,7 @@ class definition.
 
 For example, if we want to add a constant with the offset for
 `ReqWrap::req_wrap_queue_`, it should be defined after `ReqWrap::req_`, because
-`sizeof(req_)` depends on the type of T, whcih means the class definition should
+`sizeof(req_)` depends on the type of T, which means the class definition should
 be like this:
 
 ```c++
