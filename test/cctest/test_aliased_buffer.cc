@@ -155,6 +155,10 @@ void SharedBufferTest(
   ReadAndValidate(isolate, context, &ab_A, count_A, oracle_A);
   ReadAndValidate(isolate, context, &ab_B, count_B, oracle_B);
   ReadAndValidate(isolate, context, &ab_C, count_C, oracle_C);
+
+  delete oracle_A;
+  delete oracle_B;
+  delete oracle_C;
 }
 
 TEST_F(AliasBufferTest, Uint8Array) {
