@@ -5,8 +5,11 @@
 #include "src/log.h"
 
 #include <cstdarg>
+#include <iostream>
 #include <sstream>
 
+#include "src/objects.h"
+#include "src/objects-inl.h"
 #include "src/bailout-reason.h"
 #include "src/base/platform/platform.h"
 #include "src/bootstrapper.h"
@@ -61,6 +64,9 @@ static const char* ComputeMarker(SharedFunctionInfo* shared,
   }
 }
 
+class EnumerateOptimizedFunctionsVisito;
+static int EnumerateCompiledFunctions(Heap* heap, Handle<SharedFunctionInfo>* sfis,
+                                      Handle<AbstractCode>* code_objects);
 
 class CodeEventLogger::NameBuffer {
  public:
@@ -227,7 +233,7 @@ void CodeEventLogger::RegExpCodeCreateEvent(AbstractCode* code,
 // Linux perf tool logging support
 class PerfBasicLogger : public CodeEventLogger {
  public:
-  PerfBasicLogger();
+  PerfBasicLogger(Isolate* isolate);
   ~PerfBasicLogger() override;
 
   void CodeMoveEvent(AbstractCode* from, Address to) override {}
@@ -242,20 +248,26 @@ class PerfBasicLogger : public CodeEventLogger {
   void LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo* shared,
                          const char* name, int length) override;
 
+  void LogExistingFunction(Handle<SharedFunctionInfo> shared,
+                                   Handle<AbstractCode> code);
+
   // Extension added to V8 log file name to get the low-level log name.
   static const char kFilenameFormatString[];
   static const int kFilenameBufferPadding;
 
   FILE* perf_output_handle_;
-  bool enabled_ = true;
+  Isolate* isolate_;
+  bool enabled_ = false;
+  bool lala_ = false;
 };
 
 const char PerfBasicLogger::kFilenameFormatString[] = "/tmp/perf-%d.map";
 // Extra space for the PID in the filename
 const int PerfBasicLogger::kFilenameBufferPadding = 16;
 
-PerfBasicLogger::PerfBasicLogger()
-    : perf_output_handle_(NULL) {
+PerfBasicLogger::PerfBasicLogger(Isolate* isolate)
+    : perf_output_handle_(NULL), isolate_(isolate),
+      enabled_(FLAG_perf_basic_prof) {
   // Open the perf JIT dump file.
   int bufferSize = sizeof(kFilenameFormatString) + kFilenameBufferPadding;
   ScopedVector<char> perf_dump_name(bufferSize);
@@ -268,6 +280,7 @@ PerfBasicLogger::PerfBasicLogger()
       base::OS::FOpen(perf_dump_name.start(), base::OS::LogFileOpenMode);
   CHECK_NOT_NULL(perf_output_handle_);
   setvbuf(perf_output_handle_, NULL, _IOLBF, 0);
+  Enable();
 }
 
 
@@ -277,8 +290,193 @@ PerfBasicLogger::~PerfBasicLogger() {
 }
 
 void PerfBasicLogger::Enable() {
-  enabled_ = true;
+  if (enabled_ == false) {
+    enabled_ = true;
+    lala_ = true;
+
+    #if 0
+      HeapObjectIterator code_it(isolate_->heap()->code_space());
+      for (HeapObject* obj = code_it.Next(); obj != NULL; obj = code_it.Next()) {
+        if (!obj->IsCode()) {
+          // Shouldn't happen as we're looking into code_space only
+          std::cout << "not code" << std::endl;
+          continue;
+        }
+
+        // Address instruction_start = obj->address();
+        AbstractCode* abstract_code = AbstractCode::cast(obj);
+        Code* code = abstract_code->GetCode();
+        std::string name;
+        if((code->IsCodeStubOrIC() || code->IsJavaScriptCode())) {
+          name = "MESSAGE IN A BOTTLE CODE";
+        } else if(code->kind() == Code::Kind::REGEXP) {
+
+          RegExpCodeCreateEvent(abstract_code, nullptr);
+          continue;
+        } else if(code->kind() == Code::Kind::BUILTIN) {
+          name = "MESSAGE IN A BOTTLE BUILTIN";
+        } else {
+          std::cout << "abberation " << code->kind() << std::endl;
+        }
+
+        uintptr_t instruction_start = reinterpret_cast<uintptr_t>(code->instruction_start());
+        int instruction_size = code->instruction_size();
+        // int length = 19; // ????????
+        // const char* name = "MESSAGE IN A BOTTLE";
+
+        base::OS::FPrint(perf_output_handle_, "%llx %x %.*s\n", instruction_start,
+                        instruction_size, name.length(), name.c_str());
+      }
+    #elif 0
+      Heap* heap = isolate_->heap();
+      // heap->CollectAllGarbage(Heap::kMakeHeapIterableMask,
+      //                         "PerfBasicLogger::Enable");
+      HandleScope scope(isolate_);
+
+      HeapIterator iterator(heap);
+      DisallowHeapAllocation no_gc;
+
+      // Iterate the heap to find shared function info objects and record
+      // the unoptimized code for them.
+      std::vector<uint64_t> lala;
+      int counter = 0;
+      int regexp_counter = 0;
+      for (HeapObject* obj = iterator.next(); obj != NULL; obj = iterator.next()) {
+        if (obj->IsSharedFunctionInfo()) {
+          SharedFunctionInfo* sfi = SharedFunctionInfo::cast(obj);
+          LogExistingFunction(Handle<SharedFunctionInfo>(sfi),
+            Handle<AbstractCode>(sfi->abstract_code()));
+
+          LogExistingFunction(Handle<SharedFunctionInfo>(sfi),
+            Handle<AbstractCode>(AbstractCode::cast(sfi->construct_stub())));
+          counter++;
+          lala.push_back(reinterpret_cast<uint64_t>(sfi->abstract_code()->instruction_start()));
+
+        } else if (obj->IsJSRegExp()) {
+          #if 0
+          JSRegExp* re = JSRegExp::cast(obj);
+          switch (re->TypeTag()) {
+            case JSRegExp::Type::NOT_COMPILED:
+            case JSRegExp::Type::ATOM:
+              continue;
+          }
+
+          auto source = String::cast(re->source());
+          Handle<FixedArray> data = Handle<FixedArray>(
+              FixedArray::cast(re->data()));
+          Object* maybe_code = re->DataAt(JSRegExp::code_index(true));
+
+          if (!maybe_code->IsSmi() &&
+              HeapObject::cast(maybe_code)->map()->instance_type() == CODE_TYPE) {
+            AbstractCode* code = AbstractCode::cast(maybe_code);
+            std::cout << "yay" << std::endl;
+            lala.push_back(reinterpret_cast<uint64_t>(code->instruction_start()));
+          } else {
+            maybe_code = re->DataAt(JSRegExp::code_index(false));
+            if (!maybe_code->IsSmi() &&
+                HeapObject::cast(maybe_code)->map()->instance_type() == CODE_TYPE) {
+              AbstractCode* code = AbstractCode::cast(maybe_code);
+              std::cout << "yay" << std::endl;
+              lala.push_back(reinterpret_cast<uint64_t>(code->instruction_start()));
+            }
+          }
+
+          // RegExpCodeCreateEvent(code, source);
+          // if(!maybe_code->IsCode()) {
+          //   std::cout << "LIAR" << std::endl;
+          // } else {
+          //   RegExpCodeCreateEvent(AbstractCode::cast(maybe_code), regexp->source);
+          // }
+          #endif
+          regexp_counter++;
+
+        }
+        // if (sfi->is_compiled()
+        //     && (!sfi->script()->IsScript()
+        //         || Script::cast(sfi->script())->HasValidSource())) {
+
+        // } else {
+        //   std::cout << "who am I? " << sfi->abstract_code()->instruction_start() << std::endl;
+        // }
+      }
+      int counter2 = 0;
+      int not_found = 0;
+      HeapObjectIterator code_it(isolate_->heap()->code_space());
+      for (HeapObject* obj = code_it.Next(); obj != NULL; obj = code_it.Next()) {
+        counter2++;
+        AbstractCode* code = AbstractCode::cast(obj);
+        uint64_t addr = reinterpret_cast<uint64_t>(code->instruction_start());
+        if(std::find(lala.begin(), lala.end(), addr) != lala.end()) {
+          /* v contains x */
+        } else {
+          // std::cout << "not found: " << addr << std::endl;
+          /* v does not contain x */
+          not_found++;
+        }
+      }
+
+      std::cout << "counter 1: " << counter << std::endl;
+      std::cout << "counter 2: " << counter2 << std::endl;
+      std::cout << "RegExp counter: " << regexp_counter << std::endl;
+      std::cout << "not found: " << not_found << std::endl;
+    #else
+      SharedFunctionInfo::Iterator iterator(isolate_);
+      for (SharedFunctionInfo* sfi = iterator.Next(); sfi != NULL; sfi = iterator.Next()) {
+          LogExistingFunction(Handle<SharedFunctionInfo>(sfi),
+            Handle<AbstractCode>(sfi->abstract_code()));
+      }
+
+    #endif
+    lala_ = false;
+  }
 }
+
+
+void PerfBasicLogger::LogExistingFunction(Handle<SharedFunctionInfo> shared,
+                                 Handle<AbstractCode> code) {
+  Handle<String> func_name(shared->DebugName());
+  if (shared->script()->IsScript()) {
+    Handle<Script> script(Script::cast(shared->script()));
+    int line_num = Script::GetLineNumber(script, shared->start_position()) + 1;
+    int column_num =
+        Script::GetColumnNumber(script, shared->start_position()) + 1;
+    if (script->name()->IsString()) {
+      Handle<String> script_name(String::cast(script->name()));
+      if (line_num > 0) {
+        CodeCreateEvent(
+            Logger::ToNativeByScript(Logger::LAZY_COMPILE_TAG, *script),
+            *code, *shared, NULL,
+            *script_name, line_num, column_num);
+      } else {
+        // Can't distinguish eval and script here, so always use Script.
+        CodeCreateEvent(
+            Logger::ToNativeByScript(Logger::SCRIPT_TAG, *script),
+            *code, *shared, NULL, *script_name);
+      }
+    } else {
+      CodeCreateEvent(
+          Logger::ToNativeByScript(Logger::LAZY_COMPILE_TAG, *script),
+          *code, *shared, NULL,
+          isolate_->heap()->empty_string(), line_num, column_num);
+    }
+  } else if (shared->IsApiFunction()) {
+    // API function.
+    FunctionTemplateInfo* fun_data = shared->get_api_func_data();
+    Object* raw_call_data = fun_data->call_code();
+    if (!raw_call_data->IsUndefined()) {
+      CallHandlerInfo* call_data = CallHandlerInfo::cast(raw_call_data);
+      Object* callback_obj = call_data->callback();
+      Address entry_point = v8::ToCData<Address>(callback_obj);
+#if USES_FUNCTION_DESCRIPTORS
+      entry_point = *FUNCTION_ENTRYPOINT_ADDRESS(entry_point);
+#endif
+      isolate_, CallbackEvent(*func_name, entry_point);
+    }
+  } else {
+    CodeCreateEvent(Logger::LAZY_COMPILE_TAG, *code, *shared, NULL, *func_name);
+  }
+}
+
 
 void PerfBasicLogger::Disable() {
   enabled_ = false;
@@ -298,6 +496,12 @@ void PerfBasicLogger::LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo*,
        code->kind() != AbstractCode::INTERPRETED_FUNCTION &&
        code->kind() != AbstractCode::OPTIMIZED_FUNCTION)) {
     return;
+  }
+
+  std::string newName = std::string(name) + " MESSAGE IN A BOTTLE";
+  if(lala_) {
+    name = newName.c_str();
+    length = newName.length();
   }
 
   base::OS::FPrint(perf_output_handle_, "%llx %x %.*s\n",
@@ -728,7 +932,7 @@ Logger::Logger(Isolate* isolate)
       ticker_(NULL),
       profiler_(NULL),
       log_events_(NULL),
-      is_logging_(false),
+      is_logging_(true),
       log_(new Log(this)),
       perf_basic_logger_(NULL),
       perf_jit_logger_(NULL),
@@ -1762,7 +1966,7 @@ void Logger::SetPerfBasicProf() {
   if(perf_basic_logger_) {
     return;
   }
-  perf_basic_logger_ = new PerfBasicLogger();
+  perf_basic_logger_ = new PerfBasicLogger(isolate_);
   addCodeEventListener(perf_basic_logger_);
 }
 
