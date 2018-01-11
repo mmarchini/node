@@ -180,9 +180,6 @@ class Logger {
   // Emits an event with a string value -> (name, value).
   void StringEvent(const char* name, const char* value);
 
-  void SetPerfBasicProf(LogExistingCode log_existing_code);
-  void UnsetPerfBasicProf();
-
   void EnablePerfBasicProf();
   void DisablePerfBasicProf();
   bool IsEnabledPerfBasicProf();
@@ -352,6 +349,9 @@ class Logger {
 
   // Emits the profiler's first message.
   void ProfilerBeginEvent();
+
+  void SetPerfBasicProf(LogExistingCode log_existing_code);
+  void UnsetPerfBasicProf();
 
   // Emits callback event messages.
   void CallbackEventInternal(const char* prefix,

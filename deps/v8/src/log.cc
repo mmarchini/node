@@ -7,8 +7,6 @@
 #include <cstdarg>
 #include <sstream>
 
-#include "src/objects.h"
-#include "src/objects-inl.h"
 #include "src/bailout-reason.h"
 #include "src/base/platform/platform.h"
 #include "src/bootstrapper.h"
