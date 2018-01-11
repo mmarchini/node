@@ -293,9 +293,13 @@ void PerfBasicLogger::Enable() {
   if (enabled_ == false) {
     enabled_ = true;
     lala_ = true;
+    std::vector<uint64_t> seen;
 
-    #if 0
-      HeapObjectIterator code_it(isolate_->heap()->code_space());
+    #if 1
+      Heap* heap = isolate_->heap();
+      heap->CollectAllGarbage(Heap::kMakeHeapIterableMask,
+                              "PerfBasicProf::Enable");
+      HeapObjectIterator code_it(heap->code_space());
       for (HeapObject* obj = code_it.Next(); obj != NULL; obj = code_it.Next()) {
         if (!obj->IsCode()) {
           // Shouldn't happen as we're looking into code_space only
@@ -324,6 +328,7 @@ void PerfBasicLogger::Enable() {
         // int length = 19; // ????????
         // const char* name = "MESSAGE IN A BOTTLE";
 
+        seen.push_back(reinterpret_cast<uintptr_t>(abstract_code));
         base::OS::FPrint(perf_output_handle_, "%llx %x %.*s\n", instruction_start,
                         instruction_size, name.length(), name.c_str());
       }
@@ -335,7 +340,6 @@ void PerfBasicLogger::Enable() {
 
       HeapIterator iterator(heap);
       DisallowHeapAllocation no_gc;
-
       // Iterate the heap to find shared function info objects and record
       // the unoptimized code for them.
       std::vector<uint64_t> lala;
@@ -399,6 +403,7 @@ void PerfBasicLogger::Enable() {
         //   std::cout << "who am I? " << sfi->abstract_code()->instruction_start() << std::endl;
         // }
       }
+      #if 0
       int counter2 = 0;
       int not_found = 0;
       HeapObjectIterator code_it(isolate_->heap()->code_space());
@@ -419,15 +424,214 @@ void PerfBasicLogger::Enable() {
       std::cout << "counter 2: " << counter2 << std::endl;
       std::cout << "RegExp counter: " << regexp_counter << std::endl;
       std::cout << "not found: " << not_found << std::endl;
-    #else
+      #endif
+    #elif 0
+    // LOG_CODE_EVENT(isolate_, LogCodeObjects());
+    #if 1
+    {
+      uint64_t counter = 0;
+      Heap* heap = isolate_->heap();
+      // heap->CollectAllGarbage(Heap::kMakeHeapIterableMask,
+      //                         "Logger::LogCodeObjects");
+      HandleScope scope(isolate_);
+      HeapIterator iterator(heap);
+      DisallowHeapAllocation no_gc;
+      for (HeapObject* obj = iterator.next(); obj != NULL; obj = iterator.next()) {
+        if (obj->IsCode() || obj->IsBytecodeArray()) {
+          AbstractCode* code_object = AbstractCode::cast(obj);
+          Logger::LogEventsAndTags tag = Logger::STUB_TAG;
+          const char* description = "Unknown code from before profiling";
+          switch (code_object->kind()) {
+            case AbstractCode::FUNCTION:
+            case AbstractCode::INTERPRETED_FUNCTION:
+            case AbstractCode::OPTIMIZED_FUNCTION:
+              continue;  // We log this later using LogCompiledFunctions.
+            case AbstractCode::BYTECODE_HANDLER:
+              continue;  // We log it later by walking the dispatch table.
+            case AbstractCode::BINARY_OP_IC:    // fall through
+            case AbstractCode::COMPARE_IC:      // fall through
+            case AbstractCode::TO_BOOLEAN_IC:   // fall through
+
+            case AbstractCode::STUB:
+              description =
+                  CodeStub::MajorName(CodeStub::GetMajorKey(code_object->GetCode()));
+              if (description == NULL)
+                description = "A stub from before profiling";
+              tag = Logger::STUB_TAG;
+              break;
+            case AbstractCode::REGEXP:
+              description = "Regular expression code";
+              tag = Logger::REG_EXP_TAG;
+              break;
+            case AbstractCode::BUILTIN:
+              description =
+                  isolate_->builtins()->name(code_object->GetCode()->builtin_index());
+              tag = Logger::BUILTIN_TAG;
+              break;
+            case AbstractCode::HANDLER:
+              description = "An IC handler from before profiling";
+              tag = Logger::HANDLER_TAG;
+              break;
+            case AbstractCode::KEYED_LOAD_IC:
+              description = "A keyed load IC from before profiling";
+              tag = Logger::KEYED_LOAD_IC_TAG;
+              break;
+            case AbstractCode::LOAD_IC:
+              description = "A load IC from before profiling";
+              tag = Logger::LOAD_IC_TAG;
+              break;
+            case AbstractCode::CALL_IC:
+              description = "A call IC from before profiling";
+              tag = Logger::CALL_IC_TAG;
+              break;
+            case AbstractCode::STORE_IC:
+              description = "A store IC from before profiling";
+              tag = Logger::STORE_IC_TAG;
+              break;
+            case AbstractCode::KEYED_STORE_IC:
+              description = "A keyed store IC from before profiling";
+              tag = Logger::KEYED_STORE_IC_TAG;
+              break;
+            case AbstractCode::WASM_FUNCTION:
+              description = "A Wasm function";
+              tag = Logger::STUB_TAG;
+              break;
+            case AbstractCode::JS_TO_WASM_FUNCTION:
+              description = "A JavaScript to Wasm adapter";
+              tag = Logger::STUB_TAG;
+              break;
+            case AbstractCode::WASM_TO_JS_FUNCTION:
+              description = "A Wasm to JavaScript adapter";
+              tag = Logger::STUB_TAG;
+              break;
+          }
+
+          seen.push_back(reinterpret_cast<uintptr_t>(code_object->instruction_start())); counter++;
+          CodeCreateEvent(tag, code_object, description);
+          // PROFILE(isolate_, CodeCreateEvent(tag, code_object, description));
+        }
+      }
+      std::cout << "First: " << counter << std::endl;
+    }
+    #endif
+
+    // LOG_CODE_EVENT(isolate_, LogBytecodeHandlers());
+    #if 0
+    if (FLAG_ignition) {
+      std::cout << "I'm on fire!!!11!1" << std::endl;
+      interpreter::Interpreter* interpreter = isolate_->interpreter();
+      const int last_index = static_cast<int>(interpreter::Bytecode::kLast);
+      for (auto operand_scale = interpreter::OperandScale::kSingle;
+          operand_scale <= interpreter::OperandScale::kMaxValid;
+          operand_scale =
+              interpreter::Bytecodes::NextOperandScale(operand_scale)) {
+        for (int index = 0; index <= last_index; ++index) {
+          interpreter::Bytecode bytecode = interpreter::Bytecodes::FromByte(index);
+          if (interpreter::Bytecodes::BytecodeHasHandler(bytecode, operand_scale)) {
+            Code* code = interpreter->GetBytecodeHandler(bytecode, operand_scale);
+            seen.push_back(reinterpret_cast<uintptr_t>(code->instruction_start()));
+            std::string bytecode_name =
+                interpreter::Bytecodes::ToString(bytecode, operand_scale);
+            CodeCreateEvent(Logger::BYTECODE_HANDLER_TAG, AbstractCode::cast(code),
+                            bytecode_name.c_str());
+          }
+        }
+      }
+    }
+    #endif
+
+    // LOG_CODE_EVENT(isolate_, LogCompiledFunctions());
+    #if 1
+    {
+      SharedFunctionInfo::Iterator iterator(isolate_);
+      uint64_t counter=0;
+      for (SharedFunctionInfo* sfi = iterator.Next(); sfi != NULL; sfi = iterator.Next()) {
+        AbstractCode* code = sfi->abstract_code();
+        seen.push_back(reinterpret_cast<uintptr_t>(code->instruction_start()));
+        counter++;
+        LogExistingFunction(Handle<SharedFunctionInfo>(sfi),
+          Handle<AbstractCode>(code));
+      }
+      std::cout << "Third: " << counter << std::endl;
+    }
+    #endif
+
+    #elif 0
+      // std::vector<uint64_t> seen;
+      {
+        std::map<AbstractCode::Kind, uint64_t> kinds;
+#define V(name) kinds[AbstractCode::Kind::name] = 0;
+        CODE_KIND_LIST(V)
+#undef V
+        kinds[AbstractCode::Kind::INTERPRETED_FUNCTION] = 0;
       SharedFunctionInfo::Iterator iterator(isolate_);
       for (SharedFunctionInfo* sfi = iterator.Next(); sfi != NULL; sfi = iterator.Next()) {
+          AbstractCode* code = sfi->abstract_code();
+          kinds[code->kind()]++;
           LogExistingFunction(Handle<SharedFunctionInfo>(sfi),
-            Handle<AbstractCode>(sfi->abstract_code()));
+            Handle<AbstractCode>(code));
+          seen.push_back(reinterpret_cast<uintptr_t>(code));
+        }
+#define V(name) std::cout << #name << ": " << kinds[AbstractCode::Kind::name] << std::endl;
+        CODE_KIND_LIST(V)
+#undef V
+       std::cout << "INTERPRETED_FUNCTION: " << kinds[AbstractCode::Kind::INTERPRETED_FUNCTION] << std::endl;
       }
+      // HeapObject::UpdateMapCodeCache
+      // FixedArray::OffsetOfElementAt
+      // FixedDoubleArray::OffsetOfElementAt
+      // FindHandlerForMap
+      // construct_stub
+      // JSFunction
+      // CodeCache
+      // CodeCacheHashTable
+      // PolymorphicCodeCache
 
     #endif
     lala_ = false;
+    {
+      std::cout << std::endl << "======================" << std::endl;
+      std::map<AbstractCode::Kind, uint64_t> kinds;
+      std::map<AbstractCode::Kind, uint64_t> seens;
+#define V(name) kinds[AbstractCode::Kind::name] = 0;
+    CODE_KIND_LIST(V)
+#undef V
+      kinds[AbstractCode::Kind::INTERPRETED_FUNCTION] = 0;
+#define V(name) seens[AbstractCode::Kind::name] = 0;
+    CODE_KIND_LIST(V)
+#undef V
+      seens[AbstractCode::Kind::INTERPRETED_FUNCTION] = 0;
+      HeapObjectIterator code_it(isolate_->heap()->code_space());
+      uint64_t matched = 0;
+      uint64_t unmatched = 0;
+      for (HeapObject* obj = code_it.Next(); obj != NULL; obj = code_it.Next()) {
+        AbstractCode* code = AbstractCode::cast(obj);
+        kinds[code->kind()]++;
+        if(std::find(seen.begin(), seen.end(), reinterpret_cast<uintptr_t>(code->instruction_start())) != seen.end()) {
+          /* v contains x */
+          matched++;
+        } else {
+          // std::cout << "not found: " << addr << std::endl;
+          /* v does not contain x */
+          seens[code->kind()]++;
+          unmatched++;
+        }
+
+      }
+#define V(name) std::cout << #name << ": " << kinds[AbstractCode::Kind::name] << std::endl;
+    CODE_KIND_LIST(V)
+#undef V
+      std::cout << "INTERPRETED_FUNCTION: " << kinds[AbstractCode::Kind::INTERPRETED_FUNCTION] << std::endl;
+
+      std::cout << std::endl << "========== unmatched ============" << std::endl << std::endl;
+#define V(name) std::cout << #name << ": " << seens[AbstractCode::Kind::name] << std::endl;
+    CODE_KIND_LIST(V)
+#undef V
+      std::cout << "INTERPRETED_FUNCTION: " << seens[AbstractCode::Kind::INTERPRETED_FUNCTION] << std::endl;
+      std::cout << std::endl << "Matched: " << matched << std::endl << std::endl;
+      std::cout << std::endl << "Unmatched: " << unmatched << std::endl << std::endl;
+
+    }
   }
 }
 
