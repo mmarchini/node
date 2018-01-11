@@ -5,7 +5,6 @@
 #include "src/log.h"
 
 #include <cstdarg>
-#include <iostream>
 #include <sstream>
 
 #include "src/objects.h"
@@ -233,16 +232,12 @@ void CodeEventLogger::RegExpCodeCreateEvent(AbstractCode* code,
 // Linux perf tool logging support
 class PerfBasicLogger : public CodeEventLogger {
  public:
-  PerfBasicLogger(Isolate* isolate);
+  PerfBasicLogger(Isolate* isolate, Logger::LogExistingCode log_existing_code);
   ~PerfBasicLogger() override;
 
   void CodeMoveEvent(AbstractCode* from, Address to) override {}
   void CodeDisableOptEvent(AbstractCode* code,
                            SharedFunctionInfo* shared) override {}
-
-  void Enable();
-  void Disable();
-  bool IsEnabled();
 
  private:
   void LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo* shared,
@@ -268,7 +263,7 @@ const char PerfBasicLogger::kFilenameFormatString[] = "/tmp/perf-%d.map";
 // Extra space for the PID in the filename
 const int PerfBasicLogger::kFilenameBufferPadding = 16;
 
-PerfBasicLogger::PerfBasicLogger(Isolate* isolate)
+PerfBasicLogger::PerfBasicLogger(Isolate* isolate, Logger::LogExistingCode log_existing_code)
     : perf_output_handle_(NULL), isolate_(isolate),
       enabled_(FLAG_perf_basic_prof) {
   // Open the perf JIT dump file.
@@ -283,20 +278,15 @@ PerfBasicLogger::PerfBasicLogger(Isolate* isolate)
       base::OS::FOpen(perf_dump_name.start(), base::OS::LogFileOpenMode);
   CHECK_NOT_NULL(perf_output_handle_);
   setvbuf(perf_output_handle_, NULL, _IOLBF, 0);
-  Enable();
+  if (log_existing_code == Logger::LogExistingCode::kLogExistingCode) {
+    LogExistingCode();
+  }
 }
 
 
 PerfBasicLogger::~PerfBasicLogger() {
   fclose(perf_output_handle_);
   perf_output_handle_ = NULL;
-}
-
-void PerfBasicLogger::Enable() {
-  if (enabled_ == false) {
-    enabled_ = true;
-    LogExistingCode();
-  }
 }
 
 
@@ -469,19 +459,8 @@ void PerfBasicLogger::LogExistingFunction(Handle<SharedFunctionInfo> shared,
 }
 
 
-void PerfBasicLogger::Disable() {
-  enabled_ = false;
-}
-
-bool PerfBasicLogger::IsEnabled() {
-  return enabled_;
-}
-
 void PerfBasicLogger::LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo*,
                                         const char* name, int length) {
-  if (!IsEnabled()) {
-    return;
-  }
   if (FLAG_perf_basic_prof_only_functions &&
       (code->kind() != AbstractCode::FUNCTION &&
        code->kind() != AbstractCode::INTERPRETED_FUNCTION &&
@@ -1947,39 +1926,40 @@ static void PrepareLogFileName(std::ostream& os,  // NOLINT
 }
 
 
-void Logger::SetPerfBasicProf() {
+void Logger::SetPerfBasicProf(LogExistingCode log_existing_code) {
   if(perf_basic_logger_) {
     return;
   }
-  perf_basic_logger_ = new PerfBasicLogger(isolate_);
+  perf_basic_logger_ = new PerfBasicLogger(isolate_, log_existing_code);
   addCodeEventListener(perf_basic_logger_);
 }
 
 
 void Logger::EnablePerfBasicProf() {
-  SetPerfBasicProf();
-  perf_basic_logger_->Enable();
+  if(perf_basic_logger_) {
+    return;
+  }
+  perf_basic_logger_ = new PerfBasicLogger(
+      isolate_, LogExistingCode::kLogExistingCode);
+  addCodeEventListener(perf_basic_logger_);
 }
 
 void Logger::DisablePerfBasicProf() {
   if(!perf_basic_logger_) {
     return;
   }
-  perf_basic_logger_->Disable();
+  UnsetPerfBasicProf();
 }
 
 bool Logger::IsEnabledPerfBasicProf() {
-  if(!perf_basic_logger_) {
-    return false;
-  }
-  return perf_basic_logger_->IsEnabled();
+  return perf_basic_logger_ != nullptr;
 }
 
 void Logger::UnsetPerfBasicProf() {
   if (perf_basic_logger_) {
     removeCodeEventListener(perf_basic_logger_);
     delete perf_basic_logger_;
-    perf_basic_logger_ = NULL;
+    perf_basic_logger_ = nullptr;
   }
 }
 
@@ -1995,7 +1975,7 @@ bool Logger::SetUp(Isolate* isolate) {
 
 
   if (FLAG_perf_basic_prof) {
-    SetPerfBasicProf();
+    SetPerfBasicProf(LogExistingCode::kDontLogExistingCode);
   }
 
   if (FLAG_perf_prof) {

@@ -158,6 +158,11 @@ class Logger {
   };
 #undef DECLARE_ENUM
 
+  enum LogExistingCode {
+    kLogExistingCode,
+    kDontLogExistingCode
+  };
+
   // Acquires resources for logging if the right flags are set.
   bool SetUp(Isolate* isolate);
 
@@ -175,7 +180,7 @@ class Logger {
   // Emits an event with a string value -> (name, value).
   void StringEvent(const char* name, const char* value);
 
-  void SetPerfBasicProf();
+  void SetPerfBasicProf(LogExistingCode log_existing_code);
   void UnsetPerfBasicProf();
 
   void EnablePerfBasicProf();
