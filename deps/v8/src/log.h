@@ -158,6 +158,11 @@ class Logger {
   };
 #undef DECLARE_ENUM
 
+  enum LogExistingCode {
+    kLogExistingCode,
+    kDontLogExistingCode
+  };
+
   // Acquires resources for logging if the right flags are set.
   bool SetUp(Isolate* isolate);
 
@@ -174,9 +179,6 @@ class Logger {
 
   // Emits an event with a string value -> (name, value).
   void StringEvent(const char* name, const char* value);
-
-  void SetPerfBasicProf();
-  void UnsetPerfBasicProf();
 
   void EnablePerfBasicProf();
   void DisablePerfBasicProf();
@@ -347,6 +349,9 @@ class Logger {
 
   // Emits the profiler's first message.
   void ProfilerBeginEvent();
+
+  void SetPerfBasicProf(LogExistingCode log_existing_code);
+  void UnsetPerfBasicProf();
 
   // Emits callback event messages.
   void CallbackEventInternal(const char* prefix,

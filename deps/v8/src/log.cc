@@ -61,6 +61,9 @@ static const char* ComputeMarker(SharedFunctionInfo* shared,
   }
 }
 
+class EnumerateOptimizedFunctionsVisito;
+static int EnumerateCompiledFunctions(Heap* heap, Handle<SharedFunctionInfo>* sfis,
+                                      Handle<AbstractCode>* code_objects);
 
 class CodeEventLogger::NameBuffer {
  public:
@@ -227,35 +230,40 @@ void CodeEventLogger::RegExpCodeCreateEvent(AbstractCode* code,
 // Linux perf tool logging support
 class PerfBasicLogger : public CodeEventLogger {
  public:
-  PerfBasicLogger();
+  PerfBasicLogger(Isolate* isolate, Logger::LogExistingCode log_existing_code);
   ~PerfBasicLogger() override;
 
   void CodeMoveEvent(AbstractCode* from, Address to) override {}
   void CodeDisableOptEvent(AbstractCode* code,
                            SharedFunctionInfo* shared) override {}
 
-  void Enable();
-  void Disable();
-  bool IsEnabled();
-
  private:
   void LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo* shared,
                          const char* name, int length) override;
+
+  void LogExistingCode();
+  void LogCodeObjects();
+  void LogBytecodeHandlers();
+  void LogCompiledFunctions();
+  void LogExistingFunction(Handle<SharedFunctionInfo> shared,
+                                   Handle<AbstractCode> code);
 
   // Extension added to V8 log file name to get the low-level log name.
   static const char kFilenameFormatString[];
   static const int kFilenameBufferPadding;
 
   FILE* perf_output_handle_;
-  bool enabled_ = true;
+  Isolate* isolate_;
+  bool enabled_ = false;
 };
 
 const char PerfBasicLogger::kFilenameFormatString[] = "/tmp/perf-%d.map";
 // Extra space for the PID in the filename
 const int PerfBasicLogger::kFilenameBufferPadding = 16;
 
-PerfBasicLogger::PerfBasicLogger()
-    : perf_output_handle_(NULL) {
+PerfBasicLogger::PerfBasicLogger(Isolate* isolate, Logger::LogExistingCode log_existing_code)
+    : perf_output_handle_(NULL), isolate_(isolate),
+      enabled_(FLAG_perf_basic_prof) {
   // Open the perf JIT dump file.
   int bufferSize = sizeof(kFilenameFormatString) + kFilenameBufferPadding;
   ScopedVector<char> perf_dump_name(bufferSize);
@@ -268,6 +276,9 @@ PerfBasicLogger::PerfBasicLogger()
       base::OS::FOpen(perf_dump_name.start(), base::OS::LogFileOpenMode);
   CHECK_NOT_NULL(perf_output_handle_);
   setvbuf(perf_output_handle_, NULL, _IOLBF, 0);
+  if (log_existing_code == Logger::LogExistingCode::kLogExistingCode) {
+    LogExistingCode();
+  }
 }
 
 
@@ -276,23 +287,178 @@ PerfBasicLogger::~PerfBasicLogger() {
   perf_output_handle_ = NULL;
 }
 
-void PerfBasicLogger::Enable() {
-  enabled_ = true;
+
+void PerfBasicLogger::LogCodeObjects() {
+  Heap* heap = isolate_->heap();
+  heap->CollectAllGarbage(Heap::kMakeHeapIterableMask,
+                          "PerfBasicLogger::LogCodeObjects");
+  HandleScope scope(isolate_);
+  HeapIterator iterator(heap);
+  DisallowHeapAllocation no_gc;
+  for (HeapObject* obj = iterator.next(); obj != NULL; obj = iterator.next()) {
+    if (obj->IsCode() || obj->IsBytecodeArray()) {
+      AbstractCode* code_object = AbstractCode::cast(obj);
+      Logger::LogEventsAndTags tag = Logger::STUB_TAG;
+      const char* description = "Unknown code from before profiling";
+      switch (code_object->kind()) {
+        case AbstractCode::FUNCTION:
+        case AbstractCode::INTERPRETED_FUNCTION:
+        case AbstractCode::OPTIMIZED_FUNCTION:
+          continue;  // We log this later using LogCompiledFunctions.
+        case AbstractCode::BYTECODE_HANDLER:
+          continue;  // We log it later by walking the dispatch table.
+        case AbstractCode::BINARY_OP_IC:    // fall through
+        case AbstractCode::COMPARE_IC:      // fall through
+        case AbstractCode::TO_BOOLEAN_IC:   // fall through
+
+        case AbstractCode::STUB:
+          description = CodeStub::MajorName(
+              CodeStub::GetMajorKey(code_object->GetCode()));
+          if (description == NULL)
+            description = "A stub from before profiling";
+          tag = Logger::STUB_TAG;
+          break;
+        case AbstractCode::REGEXP:
+          description = "Regular expression code";
+          tag = Logger::REG_EXP_TAG;
+          break;
+        case AbstractCode::BUILTIN:
+          description = isolate_->builtins()
+              ->name(code_object->GetCode()->builtin_index());
+          tag = Logger::BUILTIN_TAG;
+          break;
+        case AbstractCode::HANDLER:
+          description = "An IC handler from before profiling";
+          tag = Logger::HANDLER_TAG;
+          break;
+        case AbstractCode::KEYED_LOAD_IC:
+          description = "A keyed load IC from before profiling";
+          tag = Logger::KEYED_LOAD_IC_TAG;
+          break;
+        case AbstractCode::LOAD_IC:
+          description = "A load IC from before profiling";
+          tag = Logger::LOAD_IC_TAG;
+          break;
+        case AbstractCode::CALL_IC:
+          description = "A call IC from before profiling";
+          tag = Logger::CALL_IC_TAG;
+          break;
+        case AbstractCode::STORE_IC:
+          description = "A store IC from before profiling";
+          tag = Logger::STORE_IC_TAG;
+          break;
+        case AbstractCode::KEYED_STORE_IC:
+          description = "A keyed store IC from before profiling";
+          tag = Logger::KEYED_STORE_IC_TAG;
+          break;
+        case AbstractCode::WASM_FUNCTION:
+          description = "A Wasm function";
+          tag = Logger::STUB_TAG;
+          break;
+        case AbstractCode::JS_TO_WASM_FUNCTION:
+          description = "A JavaScript to Wasm adapter";
+          tag = Logger::STUB_TAG;
+          break;
+        case AbstractCode::WASM_TO_JS_FUNCTION:
+          description = "A Wasm to JavaScript adapter";
+          tag = Logger::STUB_TAG;
+          break;
+      }
+
+      CodeCreateEvent(tag, code_object, description);
+    }
+  }
 }
 
-void PerfBasicLogger::Disable() {
-  enabled_ = false;
+
+void PerfBasicLogger::LogBytecodeHandlers() {
+  if (FLAG_ignition) {
+    interpreter::Interpreter* interpreter = isolate_->interpreter();
+    const int last_index = static_cast<int>(interpreter::Bytecode::kLast);
+    for (auto operand_scale = interpreter::OperandScale::kSingle;
+        operand_scale <= interpreter::OperandScale::kMaxValid;
+        operand_scale =
+            interpreter::Bytecodes::NextOperandScale(operand_scale)) {
+      for (int index = 0; index <= last_index; ++index) {
+        interpreter::Bytecode bytecode = interpreter::Bytecodes::FromByte(index);
+        if (interpreter::Bytecodes::BytecodeHasHandler(bytecode, operand_scale)) {
+          Code* code = interpreter->GetBytecodeHandler(bytecode, operand_scale);
+          std::string bytecode_name =
+              interpreter::Bytecodes::ToString(bytecode, operand_scale);
+          CodeCreateEvent(Logger::BYTECODE_HANDLER_TAG, AbstractCode::cast(code),
+                          bytecode_name.c_str());
+        }
+      }
+    }
+  }
 }
 
-bool PerfBasicLogger::IsEnabled() {
-  return enabled_;
+
+void PerfBasicLogger::LogCompiledFunctions() {
+  SharedFunctionInfo::Iterator iterator(isolate_);
+  for (SharedFunctionInfo* sfi = iterator.Next(); sfi != NULL; sfi = iterator.Next()) {
+    AbstractCode* code = sfi->abstract_code();
+    LogExistingFunction(Handle<SharedFunctionInfo>(sfi),
+      Handle<AbstractCode>(code));
+  }
 }
+
+
+void PerfBasicLogger::LogExistingCode() {
+  LogCodeObjects();
+  LogBytecodeHandlers();
+  LogCompiledFunctions();
+}
+
+
+void PerfBasicLogger::LogExistingFunction(Handle<SharedFunctionInfo> shared,
+                                 Handle<AbstractCode> code) {
+  Handle<String> func_name(shared->DebugName());
+  if (shared->script()->IsScript()) {
+    Handle<Script> script(Script::cast(shared->script()));
+    int line_num = Script::GetLineNumber(script, shared->start_position()) + 1;
+    int column_num =
+        Script::GetColumnNumber(script, shared->start_position()) + 1;
+    if (script->name()->IsString()) {
+      Handle<String> script_name(String::cast(script->name()));
+      if (line_num > 0) {
+        CodeCreateEvent(
+            Logger::ToNativeByScript(Logger::LAZY_COMPILE_TAG, *script),
+            *code, *shared, NULL,
+            *script_name, line_num, column_num);
+      } else {
+        // Can't distinguish eval and script here, so always use Script.
+        CodeCreateEvent(
+            Logger::ToNativeByScript(Logger::SCRIPT_TAG, *script),
+            *code, *shared, NULL, *script_name);
+      }
+    } else {
+      CodeCreateEvent(
+          Logger::ToNativeByScript(Logger::LAZY_COMPILE_TAG, *script),
+          *code, *shared, NULL,
+          isolate_->heap()->empty_string(), line_num, column_num);
+    }
+  } else if (shared->IsApiFunction()) {
+    // API function.
+    FunctionTemplateInfo* fun_data = shared->get_api_func_data();
+    Object* raw_call_data = fun_data->call_code();
+    if (!raw_call_data->IsUndefined()) {
+      CallHandlerInfo* call_data = CallHandlerInfo::cast(raw_call_data);
+      Object* callback_obj = call_data->callback();
+      Address entry_point = v8::ToCData<Address>(callback_obj);
+#if USES_FUNCTION_DESCRIPTORS
+      entry_point = *FUNCTION_ENTRYPOINT_ADDRESS(entry_point);
+#endif
+      isolate_, CallbackEvent(*func_name, entry_point);
+    }
+  } else {
+    CodeCreateEvent(Logger::LAZY_COMPILE_TAG, *code, *shared, NULL, *func_name);
+  }
+}
+
 
 void PerfBasicLogger::LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo*,
                                         const char* name, int length) {
-  if (!IsEnabled()) {
-    return;
-  }
   if (FLAG_perf_basic_prof_only_functions &&
       (code->kind() != AbstractCode::FUNCTION &&
        code->kind() != AbstractCode::INTERPRETED_FUNCTION &&
@@ -728,7 +894,7 @@ Logger::Logger(Isolate* isolate)
       ticker_(NULL),
       profiler_(NULL),
       log_events_(NULL),
-      is_logging_(false),
+      is_logging_(true),
       log_(new Log(this)),
       perf_basic_logger_(NULL),
       perf_jit_logger_(NULL),
@@ -1758,39 +1924,40 @@ static void PrepareLogFileName(std::ostream& os,  // NOLINT
 }
 
 
-void Logger::SetPerfBasicProf() {
+void Logger::SetPerfBasicProf(LogExistingCode log_existing_code) {
   if(perf_basic_logger_) {
     return;
   }
-  perf_basic_logger_ = new PerfBasicLogger();
+  perf_basic_logger_ = new PerfBasicLogger(isolate_, log_existing_code);
   addCodeEventListener(perf_basic_logger_);
 }
 
 
 void Logger::EnablePerfBasicProf() {
-  SetPerfBasicProf();
-  perf_basic_logger_->Enable();
+  if(perf_basic_logger_) {
+    return;
+  }
+  perf_basic_logger_ = new PerfBasicLogger(
+      isolate_, LogExistingCode::kLogExistingCode);
+  addCodeEventListener(perf_basic_logger_);
 }
 
 void Logger::DisablePerfBasicProf() {
   if(!perf_basic_logger_) {
     return;
   }
-  perf_basic_logger_->Disable();
+  UnsetPerfBasicProf();
 }
 
 bool Logger::IsEnabledPerfBasicProf() {
-  if(!perf_basic_logger_) {
-    return false;
-  }
-  return perf_basic_logger_->IsEnabled();
+  return perf_basic_logger_ != nullptr;
 }
 
 void Logger::UnsetPerfBasicProf() {
   if (perf_basic_logger_) {
     removeCodeEventListener(perf_basic_logger_);
     delete perf_basic_logger_;
-    perf_basic_logger_ = NULL;
+    perf_basic_logger_ = nullptr;
   }
 }
 
@@ -1806,7 +1973,7 @@ bool Logger::SetUp(Isolate* isolate) {
 
 
   if (FLAG_perf_basic_prof) {
-    SetPerfBasicProf();
+    SetPerfBasicProf(LogExistingCode::kDontLogExistingCode);
   }
 
   if (FLAG_perf_prof) {
