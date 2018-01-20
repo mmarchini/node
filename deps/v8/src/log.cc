@@ -307,15 +307,15 @@ void PerfBasicLogger::LogCodeObjects() {
       Logger::LogEventsAndTags tag = Logger::STUB_TAG;
       const char* description = "Unknown code from before profiling";
       switch (code_object->kind()) {
-        case AbstractCode::FUNCTION:
-        case AbstractCode::INTERPRETED_FUNCTION:
-        case AbstractCode::OPTIMIZED_FUNCTION:
-          continue;  // We log this later using LogCompiledFunctions.
-        case AbstractCode::BYTECODE_HANDLER:
-          continue;  // We log it later by walking the dispatch table.
-        case AbstractCode::BINARY_OP_IC:    // fall through
-        case AbstractCode::COMPARE_IC:      // fall through
-        case AbstractCode::TO_BOOLEAN_IC:   // fall through
+        // case AbstractCode::FUNCTION:
+        // case AbstractCode::INTERPRETED_FUNCTION:
+        // case AbstractCode::OPTIMIZED_FUNCTION:
+        //   continue;  // We log this later using LogCompiledFunctions.
+        // case AbstractCode::BYTECODE_HANDLER:
+        //   continue;  // We log it later by walking the dispatch table.
+        // case AbstractCode::BINARY_OP_IC:    // fall through
+        // case AbstractCode::COMPARE_IC:      // fall through
+        // case AbstractCode::TO_BOOLEAN_IC:   // fall through
 
         case AbstractCode::STUB:
           description = CodeStub::MajorName(
@@ -323,102 +323,72 @@ void PerfBasicLogger::LogCodeObjects() {
           if (description == NULL)
             description = "A stub from before profiling";
           tag = Logger::STUB_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::REGEXP:
           description = "Regular expression code";
           tag = Logger::REG_EXP_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::BUILTIN:
           description = isolate_->builtins()
               ->name(code_object->GetCode()->builtin_index());
           tag = Logger::BUILTIN_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::HANDLER:
           description = "An IC handler from before profiling";
           tag = Logger::HANDLER_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::KEYED_LOAD_IC:
           description = "A keyed load IC from before profiling";
           tag = Logger::KEYED_LOAD_IC_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::LOAD_IC:
           description = "A load IC from before profiling";
           tag = Logger::LOAD_IC_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::CALL_IC:
           description = "A call IC from before profiling";
           tag = Logger::CALL_IC_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::STORE_IC:
           description = "A store IC from before profiling";
           tag = Logger::STORE_IC_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::KEYED_STORE_IC:
           description = "A keyed store IC from before profiling";
           tag = Logger::KEYED_STORE_IC_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::WASM_FUNCTION:
           description = "A Wasm function";
           tag = Logger::STUB_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::JS_TO_WASM_FUNCTION:
           description = "A JavaScript to Wasm adapter";
           tag = Logger::STUB_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
         case AbstractCode::WASM_TO_JS_FUNCTION:
           description = "A Wasm to JavaScript adapter";
           tag = Logger::STUB_TAG;
+          CodeCreateEvent(tag, code_object, description);
           break;
       }
-
-      CodeCreateEvent(tag, code_object, description);
     }
   }
 }
-
-// NOTE (mmarchini): There's no need to have this, since Node v6.x doesn't use
-// turbofan
-#if 0
-void PerfBasicLogger::LogBytecodeHandlers() {
-  if (FLAG_ignition) {
-    interpreter::Interpreter* interpreter = isolate_->interpreter();
-    const int last_index = static_cast<int>(interpreter::Bytecode::kLast);
-    for (auto operand_scale = interpreter::OperandScale::kSingle;
-        operand_scale <= interpreter::OperandScale::kMaxValid;
-        operand_scale =
-            interpreter::Bytecodes::NextOperandScale(operand_scale)) {
-      for (int index = 0; index <= last_index; ++index) {
-        interpreter::Bytecode bytecode = interpreter::Bytecodes::FromByte(index);
-        if (interpreter::Bytecodes::BytecodeHasHandler(bytecode, operand_scale)) {
-          Code* code = interpreter->GetBytecodeHandler(bytecode, operand_scale);
-          std::string bytecode_name =
-              interpreter::Bytecodes::ToString(bytecode, operand_scale);
-          CodeCreateEvent(Logger::BYTECODE_HANDLER_TAG, AbstractCode::cast(code),
-                          bytecode_name.c_str());
-        }
-      }
-    }
-  }
-}
-#endif
-
-// NOTE (mmarchini): moved to PerfBasicLogger::LogCodeObjects to improve speed
-#if 0
-void PerfBasicLogger::LogCompiledFunctions() {
-  SharedFunctionInfo::Iterator iterator(isolate_);
-  for (SharedFunctionInfo* sfi = iterator.Next(); sfi != NULL; sfi = iterator.Next()) {
-    AbstractCode* code = sfi->abstract_code();
-    LogExistingFunction(Handle<SharedFunctionInfo>(sfi),
-      Handle<AbstractCode>(code));
-  }
-}
-#endif
 
 
 void PerfBasicLogger::LogExistingCode() {
   LogCodeObjects();
-  // LogBytecodeHandlers();
-  // LogCompiledFunctions();
 }
 
 
