@@ -296,6 +296,12 @@ void PerfBasicLogger::LogCodeObjects() {
   HeapIterator iterator(heap);
   DisallowHeapAllocation no_gc;
   for (HeapObject* obj = iterator.next(); obj != NULL; obj = iterator.next()) {
+    if (obj->IsSharedFunctionInfo()) {
+      SharedFunctionInfo* sfi = SharedFunctionInfo::cast(obj);
+      AbstractCode* code = sfi->abstract_code();
+      LogExistingFunction(Handle<SharedFunctionInfo>(sfi),
+          Handle<AbstractCode>(code));
+    }
     if (obj->IsCode() || obj->IsBytecodeArray()) {
       AbstractCode* code_object = AbstractCode::cast(obj);
       Logger::LogEventsAndTags tag = Logger::STUB_TAG;
@@ -370,7 +376,9 @@ void PerfBasicLogger::LogCodeObjects() {
   }
 }
 
-
+// NOTE (mmarchini): There's no need to have this, since Node v6.x doesn't use
+// turbofan
+#if 0
 void PerfBasicLogger::LogBytecodeHandlers() {
   if (FLAG_ignition) {
     interpreter::Interpreter* interpreter = isolate_->interpreter();
@@ -392,8 +400,10 @@ void PerfBasicLogger::LogBytecodeHandlers() {
     }
   }
 }
+#endif
 
-
+// NOTE (mmarchini): moved to PerfBasicLogger::LogCodeObjects to improve speed
+#if 0
 void PerfBasicLogger::LogCompiledFunctions() {
   SharedFunctionInfo::Iterator iterator(isolate_);
   for (SharedFunctionInfo* sfi = iterator.Next(); sfi != NULL; sfi = iterator.Next()) {
@@ -402,12 +412,13 @@ void PerfBasicLogger::LogCompiledFunctions() {
       Handle<AbstractCode>(code));
   }
 }
+#endif
 
 
 void PerfBasicLogger::LogExistingCode() {
   LogCodeObjects();
-  LogBytecodeHandlers();
-  LogCompiledFunctions();
+  // LogBytecodeHandlers();
+  // LogCompiledFunctions();
 }
 
 
