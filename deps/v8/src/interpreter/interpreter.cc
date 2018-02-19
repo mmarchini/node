@@ -22,6 +22,7 @@
 #include "src/parsing/parse-info.h"
 #include "src/setup-isolate.h"
 #include "src/snapshot/snapshot.h"
+#include "src/utils.h"
 #include "src/visitors.h"
 
 namespace v8 {
@@ -214,16 +215,21 @@ Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
   // Copy the generated code into a heap object.
 
   desc.instr_size = trampoline->instruction_size(); // int
+  // desc.reloc_size = trampoline->relocation_size(); // int
+  desc.reloc_size = 0; // int
 
   size_t page_size = base::OS::AllocatePageSize();
-  size_t allocated = RoundUp(desc.instr_size, page_size);
+  size_t allocated = RoundUp(desc.instr_size + desc.reloc_size, page_size);
   desc.buffer_size = allocated; // int
   desc.buffer = reinterpret_cast<byte*>(base::OS::Allocate(
-      nullptr, allocated, page_size,
+      base::OS::GetRandomMmapAddr(), allocated, page_size,
       base::OS::MemoryPermission::kReadWriteExecute)); // byte*
-  memcpy(desc.buffer, trampoline->instruction_start(), desc.instr_size);
+  CopyBytes(desc.buffer, trampoline->instruction_start(),
+            static_cast<size_t>(desc.instr_size));
+  CopyBytes(desc.buffer + desc.buffer_size - desc.reloc_size,
+            trampoline->relocation_start(),
+            static_cast<size_t>(desc.reloc_size));
 
-  desc.reloc_size = 0; // int
   desc.constant_pool_size = 0; // int
   desc.unwinding_info = nullptr; // byte*
   desc.unwinding_info_size = 0; // int
@@ -231,10 +237,9 @@ Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
 
   Handle<Code> new_object = factory->NewCode(
       desc, Code::INTERPRETER_TRAMPOLINE, Handle<Object>(),
-      // Builtins::kNoBuiltinId, table,
       trampoline->builtin_index(), table,
       MaybeHandle<ByteArray>(), DeoptimizationData::Empty(isolate),
-      kImmovable);
+      kMovable);
 
   CompilationInfo* compilation_info = this->compilation_info();
   Handle<SharedFunctionInfo> shared = compilation_info->shared_info();
