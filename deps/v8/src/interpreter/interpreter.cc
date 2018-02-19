@@ -8,6 +8,8 @@
 #include <memory>
 #include <iostream>
 
+#include "src/builtins/builtins.h"
+#include "src/macro-assembler.h"
 #include "src/ast/prettyprinter.h"
 #include "src/base/platform/platform.h"
 #include "src/bootstrapper.h"
@@ -201,62 +203,58 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::ExecuteJobImpl() {
   return SUCCEEDED;
 }
 
+#define __ ACCESS_MASM(masm)
+
+void Generate_InterpreterFunctionCaller(MacroAssembler* masm) {
+  FrameScope frame_scope(masm, StackFrame::MANUAL);
+  // __ pushq(rbp);  // Caller's frame pointer.
+
+  __ Call(BUILTIN_CODE(masm->isolate(), InterpreterEntryTrampoline),
+          RelocInfo::CODE_TARGET);
+  __ ret(0);
+}
+
+
 Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
     Isolate* isolate) {
   Handle<Code> trampoline = BUILTIN_CODE(isolate, InterpreterEntryTrampoline);
-  Factory* factory = isolate->factory();
-
-  // Allocate the handler table.
   Handle<HandlerTable> table = HandlerTable::Empty(isolate);
 
-  // Create the code object.
+  // HandleScope scope(isolate);
+  // Canonicalize handles, so that we can share constant pool entries pointing
+  // to code targets without dereferencing their handles.
+  // CanonicalHandleScope canonical(isolate);
+
+  const size_t buffer_size = 32 * KB;
+  byte buffer[buffer_size];  // NOLINT(runtime/arrays)
+
+  MacroAssembler masm(isolate, buffer, buffer_size, CodeObjectRequired::kYes);
+  DCHECK(!masm.has_frame());
+  Generate_InterpreterFunctionCaller(&masm);
   CodeDesc desc;
+  masm.GetCode(isolate, &desc);
+  Handle<Code> code = isolate->factory()->NewCode(
+      desc, Code::BUILTIN, Handle<HeapObject>(), Builtins::kNoBuiltinId);
+      // desc, Code::INTERPRETER_TRAMPOLINE, Handle<HeapObject>(), Builtins::kNoBuiltinId);
+      // desc, Code::BUILTIN, Handle<HeapObject>(), trampoline->builtin_index());
+      // desc, Code::BUILTIN, masm.CodeObject(), trampoline->builtin_index());
+      // table, MaybeHandle<ByteArray>(), DeoptimizationData::Empty(isolate), kMovable
+  // CompilationInfo* compilation_info = this->compilation_info();
+  // Handle<SharedFunctionInfo> shared = compilation_info->shared_info();
+  // Handle<Script> script = parse_info()->script();
+  // Handle<AbstractCode> abstract_code = Handle<AbstractCode>::cast(code);
+  // int line_num = Script::GetLineNumber(script, shared->start_position()) + 1;
+  // int column_num =
+  //   Script::GetColumnNumber(script, shared->start_position()) + 1;
+  // String* script_name = script->name()->IsString()
+  //                         ? String::cast(script->name())
+  //                         : isolate->heap()->empty_string();
+  // CodeEventListener::LogEventsAndTags log_tag = Logger::ToNativeByScript(
+  //     CodeEventListener::INTERPRETED_FUNCTION_TAG, *script);
+  // PROFILE(isolate, CodeCreateEvent(log_tag, *abstract_code, *shared,
+  //                                   script_name, line_num, column_num));
 
-  // Copy the generated code into a heap object.
-
-  desc.instr_size = trampoline->instruction_size(); // int
-  // desc.reloc_size = trampoline->relocation_size(); // int
-  desc.reloc_size = 0; // int
-
-  size_t page_size = base::OS::AllocatePageSize();
-  size_t allocated = RoundUp(desc.instr_size + desc.reloc_size, page_size);
-  desc.buffer_size = allocated; // int
-  desc.buffer = reinterpret_cast<byte*>(base::OS::Allocate(
-      base::OS::GetRandomMmapAddr(), allocated, page_size,
-      base::OS::MemoryPermission::kReadWriteExecute)); // byte*
-  CopyBytes(desc.buffer, trampoline->instruction_start(),
-            static_cast<size_t>(desc.instr_size));
-  CopyBytes(desc.buffer + desc.buffer_size - desc.reloc_size,
-            trampoline->relocation_start(),
-            static_cast<size_t>(desc.reloc_size));
-
-  desc.constant_pool_size = 0; // int
-  desc.unwinding_info = nullptr; // byte*
-  desc.unwinding_info_size = 0; // int
-  desc.origin = nullptr; // Assembler*
-
-  Handle<Code> new_object = factory->NewCode(
-      desc, Code::INTERPRETER_TRAMPOLINE, Handle<Object>(),
-      trampoline->builtin_index(), table,
-      MaybeHandle<ByteArray>(), DeoptimizationData::Empty(isolate),
-      kMovable);
-
-  CompilationInfo* compilation_info = this->compilation_info();
-  Handle<SharedFunctionInfo> shared = compilation_info->shared_info();
-  Handle<Script> script = parse_info()->script();
-  Handle<AbstractCode> abstract_code = Handle<AbstractCode>::cast(new_object);
-  int line_num = Script::GetLineNumber(script, shared->start_position()) + 1;
-  int column_num =
-    Script::GetColumnNumber(script, shared->start_position()) + 1;
-  String* script_name = script->name()->IsString()
-                          ? String::cast(script->name())
-                          : isolate->heap()->empty_string();
-  CodeEventListener::LogEventsAndTags log_tag = Logger::ToNativeByScript(
-      CodeEventListener::INTERPRETED_FUNCTION_TAG, *script);
-  PROFILE(isolate, CodeCreateEvent(log_tag, *abstract_code, *shared,
-                                    script_name, line_num, column_num));
-
-  return new_object;
+  return code;
 }
 
 InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
