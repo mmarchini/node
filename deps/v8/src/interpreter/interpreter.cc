@@ -6,15 +6,17 @@
 
 #include <fstream>
 #include <memory>
+#include <iostream>
 
 #include "src/ast/prettyprinter.h"
+#include "src/base/platform/platform.h"
 #include "src/bootstrapper.h"
 #include "src/compilation-info.h"
 #include "src/compiler.h"
 #include "src/counters-inl.h"
 #include "src/interpreter/bytecode-generator.h"
 #include "src/interpreter/bytecodes.h"
-#include "src/log.h"
+#include "src/log-inl.h"
 #include "src/objects-inl.h"
 #include "src/objects/shared-function-info.h"
 #include "src/parsing/parse-info.h"
@@ -38,6 +40,7 @@ class InterpreterCompilationJob final : public CompilationJob {
 
  private:
   BytecodeGenerator* generator() { return &generator_; }
+  Handle<Code> DuplicateInterpreterEntryTrampoline(Isolate *isolate);
 
   Zone zone_;
   CompilationInfo compilation_info_;
@@ -197,6 +200,60 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::ExecuteJobImpl() {
   return SUCCEEDED;
 }
 
+Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
+    Isolate* isolate) {
+  Handle<Code> trampoline = BUILTIN_CODE(isolate, InterpreterEntryTrampoline);
+  Factory* factory = isolate->factory();
+
+  // Allocate the handler table.
+  Handle<HandlerTable> table = HandlerTable::Empty(isolate);
+
+  // Create the code object.
+  CodeDesc desc;
+
+  // Copy the generated code into a heap object.
+
+  desc.instr_size = trampoline->instruction_size(); // int
+
+  size_t page_size = base::OS::AllocatePageSize();
+  size_t allocated = RoundUp(desc.instr_size, page_size);
+  desc.buffer_size = allocated; // int
+  desc.buffer = reinterpret_cast<byte*>(base::OS::Allocate(
+      nullptr, allocated, page_size,
+      base::OS::MemoryPermission::kReadWriteExecute)); // byte*
+  memcpy(desc.buffer, trampoline->instruction_start(), desc.instr_size);
+
+  desc.reloc_size = 0; // int
+  desc.constant_pool_size = 0; // int
+  desc.unwinding_info = nullptr; // byte*
+  desc.unwinding_info_size = 0; // int
+  desc.origin = nullptr; // Assembler*
+
+  Handle<Code> new_object = factory->NewCode(
+      desc, Code::INTERPRETER_TRAMPOLINE, Handle<Object>(),
+      // Builtins::kNoBuiltinId, table,
+      trampoline->builtin_index(), table,
+      MaybeHandle<ByteArray>(), DeoptimizationData::Empty(isolate),
+      kImmovable);
+
+  CompilationInfo* compilation_info = this->compilation_info();
+  Handle<SharedFunctionInfo> shared = compilation_info->shared_info();
+  Handle<Script> script = parse_info()->script();
+  Handle<AbstractCode> abstract_code = Handle<AbstractCode>::cast(new_object);
+  int line_num = Script::GetLineNumber(script, shared->start_position()) + 1;
+  int column_num =
+    Script::GetColumnNumber(script, shared->start_position()) + 1;
+  String* script_name = script->name()->IsString()
+                          ? String::cast(script->name())
+                          : isolate->heap()->empty_string();
+  CodeEventListener::LogEventsAndTags log_tag = Logger::ToNativeByScript(
+      CodeEventListener::INTERPRETED_FUNCTION_TAG, *script);
+  PROFILE(isolate, CodeCreateEvent(log_tag, *abstract_code, *shared,
+                                    script_name, line_num, column_num));
+
+  return new_object;
+}
+
 InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
     Isolate* isolate) {
   RuntimeCallTimerScope runtimeTimerScope(
@@ -221,8 +278,8 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
   }
 
   compilation_info()->SetBytecodeArray(bytecodes);
-  compilation_info()->SetCode(
-      BUILTIN_CODE(isolate, InterpreterEntryTrampoline));
+
+  compilation_info()->SetCode(DuplicateInterpreterEntryTrampoline(isolate));
   return SUCCEEDED;
 }
 

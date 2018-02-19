@@ -462,6 +462,7 @@ StackFrame::Type StackFrame::ComputeType(const StackFrameIteratorBase* iterator,
       if (code_obj != nullptr) {
         switch (code_obj->kind()) {
           case Code::BUILTIN:
+          case Code::INTERPRETER_TRAMPOLINE:
             if (StackFrame::IsTypeMarker(marker)) break;
             if (code_obj->is_interpreter_trampoline_builtin()) {
               return INTERPRETED;

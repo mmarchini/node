@@ -112,6 +112,7 @@ class Code : public HeapObject {
 
 #define CODE_KIND_LIST(V)   \
   V(OPTIMIZED_FUNCTION)     \
+  V(INTERPRETER_TRAMPOLINE)   \
   V(BYTECODE_HANDLER)       \
   V(STUB)                   \
   V(BUILTIN)                \

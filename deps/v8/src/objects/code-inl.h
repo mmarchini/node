@@ -307,7 +307,7 @@ inline bool Code::is_interpreter_trampoline_builtin() const {
        this == builtins->builtin(Builtins::kInterpreterEnterBytecodeAdvance) ||
        this == builtins->builtin(Builtins::kInterpreterEnterBytecodeDispatch));
   DCHECK_IMPLIES(is_interpreter_trampoline, !Builtins::IsLazy(builtin_index()));
-  return is_interpreter_trampoline;
+  return is_interpreter_trampoline || kind() == Kind::INTERPRETER_TRAMPOLINE;
 }
 
 inline bool Code::checks_optimization_marker() const {
@@ -317,7 +317,7 @@ inline bool Code::checks_optimization_marker() const {
        this == builtins->builtin(Builtins::kInterpreterEntryTrampoline) ||
        this == builtins->builtin(Builtins::kCheckOptimizationMarker));
   DCHECK_IMPLIES(checks_marker, !Builtins::IsLazy(builtin_index()));
-  return checks_marker ||
+  return checks_marker || (kind() == INTERPRETER_TRAMPOLINE) ||
          (kind() == OPTIMIZED_FUNCTION && marked_for_deoptimization());
 }
 

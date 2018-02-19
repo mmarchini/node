@@ -258,6 +258,7 @@ void PerfBasicLogger::LogRecordedBuffer(AbstractCode* code, SharedFunctionInfo*,
                                         const char* name, int length) {
   if (FLAG_perf_basic_prof_only_functions &&
       (code->kind() != AbstractCode::INTERPRETED_FUNCTION &&
+       code->kind() != AbstractCode::INTERPRETER_TRAMPOLINE &&
        code->kind() != AbstractCode::OPTIMIZED_FUNCTION)) {
     return;
   }
@@ -1514,6 +1515,7 @@ void Logger::LogCodeObject(Object* object) {
   const char* description = "Unknown code from the snapshot";
   switch (code_object->kind()) {
     case AbstractCode::INTERPRETED_FUNCTION:
+    case AbstractCode::INTERPRETER_TRAMPOLINE:
     case AbstractCode::OPTIMIZED_FUNCTION:
       return;  // We log this later using LogCompiledFunctions.
     case AbstractCode::BYTECODE_HANDLER:
