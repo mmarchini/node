@@ -892,7 +892,7 @@ void Builtins::Generate_InterpreterEntryTrampoline(MacroAssembler* masm) {
   __ movp(feedback_vector, FieldOperand(feedback_vector, Cell::kValueOffset));
   // Read off the optimized code slot in the feedback vector, and if there
   // is optimized code or an optimization marker, call that instead.
-  MaybeTailCallOptimizedCodeSlot(masm, feedback_vector, rcx, r14, r15);
+  // MaybeTailCallOptimizedCodeSlot(masm, feedback_vector, rcx, r14, r15);
 
   // Open a frame scope to indicate that there is a frame on the stack.  The
   // MANUAL indicates that the scope shouldn't actually generate code to set up
