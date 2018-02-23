@@ -213,6 +213,17 @@ void SharedFunctionInfo::set_code(Code* value, WriteBarrierMode mode) {
   CONDITIONAL_WRITE_BARRIER(value->GetHeap(), this, kCodeOffset, value, mode);
 }
 
+
+void SharedFunctionInfo::set_interpreted_function_stack_hack(Code* value) {
+  DCHECK(!GetHeap()->InNewSpace(value));
+  WRITE_FIELD(this, kInterpretedFunctionStackHackOffset, value);
+  GetHeap()->incremental_marking()->RecordWrite(
+      this, HeapObject::RawField(this, kInterpretedFunctionStackHackOffset),
+      value);
+  value->set_is_interpreter_function_stack_hack(true);
+}
+
+
 bool SharedFunctionInfo::IsInterpreted() const {
   return code()->is_interpreter_trampoline_builtin();
 }

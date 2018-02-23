@@ -107,6 +107,8 @@ class SharedFunctionInfo : public HeapObject {
   inline bool HasLength() const;
   inline void set_length(int value);
 
+  inline void set_interpreted_function_stack_hack(Code* code);
+
   // [internal formal parameter count]: The declared number of parameters.
   // For subclass constructors, also includes new.target.
   // The size of function's frame is internal_formal_parameter_count + 1.
@@ -417,6 +419,7 @@ class SharedFunctionInfo : public HeapObject {
 #define SHARED_FUNCTION_INFO_FIELDS(V)        \
   /* Pointer fields. */                       \
   V(kCodeOffset, kPointerSize)                \
+  V(kInterpretedFunctionStackHackOffset, kPointerSize)                \
   V(kNameOffset, kPointerSize)                \
   V(kScopeInfoOffset, kPointerSize)           \
   V(kOuterScopeInfoOffset, kPointerSize)      \

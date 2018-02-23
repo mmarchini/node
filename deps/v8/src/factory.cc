@@ -2512,12 +2512,14 @@ Handle<SharedFunctionInfo> Factory::NewSharedFunctionInfo(
   if (!maybe_code.ToHandle(&code)) {
     code = BUILTIN_CODE(isolate(), Illegal);
   }
+  Handle<Code> interpreter_stack_hack = BUILTIN_CODE(isolate(), Illegal);
   Object* function_data = (Builtins::IsBuiltinId(maybe_builtin_index) &&
                            Builtins::IsLazy(maybe_builtin_index))
                               ? Smi::FromInt(maybe_builtin_index)
                               : Object::cast(*undefined_value());
   share->set_function_data(function_data, SKIP_WRITE_BARRIER);
   share->set_code(*code);
+  share->set_interpreted_function_stack_hack(*interpreter_stack_hack);
   share->set_scope_info(ScopeInfo::Empty(isolate()));
   share->set_outer_scope_info(*the_hole_value());
   DCHECK(!Builtins::IsLazy(Builtins::kConstructedNonConstructable));
