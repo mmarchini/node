@@ -232,6 +232,10 @@ class Code : public HeapObject {
   inline void set_builtin_index(int id);
   inline bool is_builtin() const;
 
+  //
+  inline void set_is_interpreter_function_stack_hack(bool value) const;
+  inline bool is_interpreter_function_stack_hack() const;
+
   // [stack_slots]: For kind OPTIMIZED_FUNCTION, the number of stack slots
   // reserved in the code prologue.
   inline unsigned stack_slots() const;
@@ -485,7 +489,8 @@ class Code : public HeapObject {
   V(CanHaveWeakObjectsField, bool, 1, _)          \
   V(IsConstructStubField, bool, 1, _)             \
   V(IsPromiseRejectionField, bool, 1, _)          \
-  V(IsExceptionCaughtField, bool, 1, _)
+  V(IsExceptionCaughtField, bool, 1, _)           \
+  V(IsInterpreterFunctionStackHack, bool, 1, _)
   DEFINE_BIT_FIELDS(CODE_KIND_SPECIFIC_FLAGS_BIT_FIELDS)
 #undef CODE_KIND_SPECIFIC_FLAGS_BIT_FIELDS
   static_assert(IsExceptionCaughtField::kNext <= 32, "KindSpecificFlags full");

@@ -411,6 +411,19 @@ void Code::set_builtin_index(int index) {
 
 bool Code::is_builtin() const { return builtin_index() != -1; }
 
+void Code::set_is_interpreter_function_stack_hack(bool value) const {
+  DCHECK(kind() == STUB);
+  int previous = code_data_container()->kind_specific_flags();
+  int updated = IsInterpreterFunctionStackHack::update(previous, value);
+  code_data_container()->set_kind_specific_flags(updated);
+}
+
+bool Code::is_interpreter_function_stack_hack() const {
+  DCHECK(kind() == STUB);
+  int flags = code_data_container()->kind_specific_flags();
+  return IsInterpreterFunctionStackHack::decode(flags);
+}
+
 unsigned Code::stack_slots() const {
   DCHECK(is_turbofanned());
   return StackSlotsField::decode(READ_UINT32_FIELD(this, kFlagsOffset));
