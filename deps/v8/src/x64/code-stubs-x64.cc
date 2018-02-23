@@ -37,6 +37,23 @@ void ArrayNArgumentsConstructorStub::Generate(MacroAssembler* masm) {
 }
 
 
+void InterpretedFunctionStackHackStub::Generate(MacroAssembler* masm) {
+  __ popq(rbx);
+  __ call(rbx);
+  __ pushq(rbx);
+
+  // Set the return address to the correct point in the interpreter entry
+  // trampoline.
+  Smi* interpreter_entry_return_pc_offset(
+      masm->isolate()->heap()->interpreter_entry_return_pc_offset());
+  DCHECK_NE(interpreter_entry_return_pc_offset, Smi::kZero);
+  __ Move(rbx, BUILTIN_CODE(masm->isolate(), InterpreterEntryTrampoline));
+  __ addp(rbx, Immediate(interpreter_entry_return_pc_offset->value() +
+                         Code::kHeaderSize - kHeapObjectTag));
+  __ jmp(rbx);
+}
+
+
 void DoubleToIStub::Generate(MacroAssembler* masm) {
     Register final_result_reg = this->destination();
 

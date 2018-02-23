@@ -38,6 +38,7 @@ class Node;
   V(MathPow)                                  \
   V(ProfileEntryHook)                         \
   V(StoreSlowElement)                         \
+  V(InterpretedFunctionStackHack)             \
   /* --- TurboFanCodeStubs --- */             \
   V(ArrayNoArgumentConstructor)               \
   V(ArraySingleArgumentConstructor)           \
@@ -961,6 +962,16 @@ class ArrayNArgumentsConstructorStub : public PlatformCodeStub {
 
  private:
   DEFINE_PLATFORM_CODE_STUB(ArrayNArgumentsConstructor, PlatformCodeStub);
+};
+
+class InterpretedFunctionStackHackStub : public PlatformCodeStub {
+ public:
+  explicit InterpretedFunctionStackHackStub(Isolate* isolate)
+      : PlatformCodeStub(isolate) {}
+
+ private:
+  DEFINE_NULL_CALL_INTERFACE_DESCRIPTOR();
+  DEFINE_PLATFORM_CODE_STUB(InterpretedFunctionStackHack, PlatformCodeStub);
 };
 
 class StoreSlowElementStub : public TurboFanCodeStub {
