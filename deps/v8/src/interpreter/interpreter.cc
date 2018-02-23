@@ -6,20 +6,24 @@
 
 #include <fstream>
 #include <memory>
+#include <iostream>
 
 #include "src/ast/prettyprinter.h"
+#include "src/base/platform/platform.h"
 #include "src/bootstrapper.h"
 #include "src/compilation-info.h"
 #include "src/compiler.h"
 #include "src/counters-inl.h"
 #include "src/interpreter/bytecode-generator.h"
 #include "src/interpreter/bytecodes.h"
-#include "src/log.h"
+#include "src/log-inl.h"
 #include "src/objects-inl.h"
+#include "src/code-stubs.h"
 #include "src/objects/shared-function-info.h"
 #include "src/parsing/parse-info.h"
 #include "src/setup-isolate.h"
 #include "src/snapshot/snapshot.h"
+#include "src/utils.h"
 #include "src/visitors.h"
 
 namespace v8 {
@@ -38,6 +42,7 @@ class InterpreterCompilationJob final : public CompilationJob {
 
  private:
   BytecodeGenerator* generator() { return &generator_; }
+  Handle<Code> DuplicateInterpreterEntryTrampoline(Isolate *isolate);
 
   Zone zone_;
   CompilationInfo compilation_info_;
@@ -197,6 +202,32 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::ExecuteJobImpl() {
   return SUCCEEDED;
 }
 
+Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
+    Isolate* isolate) {
+  Handle<Code> trampoline = BUILTIN_CODE(isolate, InterpreterEntryTrampoline);
+  CompilationInfo* compilation_info = this->compilation_info();
+
+  InterpretedFunctionStackHackStub stub(isolate);
+  Handle<Code> code = stub.GetCode();
+  Handle<SharedFunctionInfo> shared = compilation_info->shared_info();
+  shared->set_interpreted_function_stack_hack(*code);
+
+  Handle<Script> script = parse_info()->script();
+  Handle<AbstractCode> abstract_code = Handle<AbstractCode>::cast(code);
+  int line_num = Script::GetLineNumber(script, shared->start_position()) + 1;
+  int column_num =
+    Script::GetColumnNumber(script, shared->start_position()) + 1;
+  String* script_name = script->name()->IsString()
+                          ? String::cast(script->name())
+                          : isolate->heap()->empty_string();
+  CodeEventListener::LogEventsAndTags log_tag = Logger::ToNativeByScript(
+      CodeEventListener::INTERPRETED_FUNCTION_TAG, *script);
+  PROFILE(isolate, CodeCreateEvent(log_tag, *abstract_code, *shared,
+                                    script_name, line_num, column_num));
+
+  return trampoline;
+}
+
 InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
     Isolate* isolate) {
   RuntimeCallTimerScope runtimeTimerScope(
@@ -221,8 +252,8 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
   }
 
   compilation_info()->SetBytecodeArray(bytecodes);
-  compilation_info()->SetCode(
-      BUILTIN_CODE(isolate, InterpreterEntryTrampoline));
+
+  compilation_info()->SetCode(DuplicateInterpreterEntryTrampoline(isolate));
   return SUCCEEDED;
 }
 
