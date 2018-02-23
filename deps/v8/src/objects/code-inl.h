@@ -302,8 +302,10 @@ void Code::initialize_flags(Kind kind, bool has_unwinding_info,
 
 inline bool Code::is_interpreter_trampoline_builtin() const {
   Builtins* builtins = GetIsolate()->builtins();
+  Code* interpreter_entry_trampoline =
+      builtins->builtin(Builtins::kInterpreterEntryTrampoline);
   bool is_interpreter_trampoline =
-      (this == builtins->builtin(Builtins::kInterpreterEntryTrampoline) ||
+      (builtin_index() == interpreter_entry_trampoline->builtin_index() ||
        this == builtins->builtin(Builtins::kInterpreterEnterBytecodeAdvance) ||
        this == builtins->builtin(Builtins::kInterpreterEnterBytecodeDispatch));
   DCHECK_IMPLIES(is_interpreter_trampoline, !Builtins::IsLazy(builtin_index()));
@@ -312,9 +314,11 @@ inline bool Code::is_interpreter_trampoline_builtin() const {
 
 inline bool Code::checks_optimization_marker() const {
   Builtins* builtins = GetIsolate()->builtins();
+  Code* interpreter_entry_trampoline =
+      builtins->builtin(Builtins::kInterpreterEntryTrampoline);
   bool checks_marker =
-      (this == builtins->builtin(Builtins::kCompileLazy) ||
-       this == builtins->builtin(Builtins::kInterpreterEntryTrampoline) ||
+      ((this == builtins->builtin(Builtins::kCompileLazy) ||
+       builtin_index() == interpreter_entry_trampoline->builtin_index()) ||
        this == builtins->builtin(Builtins::kCheckOptimizationMarker));
   DCHECK_IMPLIES(checks_marker, !Builtins::IsLazy(builtin_index()));
   return checks_marker ||

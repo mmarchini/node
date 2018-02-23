@@ -697,6 +697,7 @@ MaybeHandle<Code> GetOptimizedCode(Handle<JSFunction> function,
       // Set the optimization marker and return a code object which checks it.
       function->SetOptimizationMarker(OptimizationMarker::kInOptimizationQueue);
       if (function->IsInterpreted()) {
+        // NOTE (mmarchini): should we do something here?
         return BUILTIN_CODE(isolate, InterpreterEntryTrampoline);
       } else {
         return BUILTIN_CODE(isolate, CheckOptimizationMarker);
