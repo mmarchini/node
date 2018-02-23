@@ -31,6 +31,7 @@ class String;
   V(CALLBACK_TAG, "Callback")                                            \
   V(EVAL_TAG, "Eval")                                                    \
   V(FUNCTION_TAG, "Function")                                            \
+  V(INTERPRETED_FUNCTION_TAG, "InterpretedFunction")                     \
   V(HANDLER_TAG, "Handler")                                              \
   V(BYTECODE_HANDLER_TAG, "BytecodeHandler")                             \
   V(LAZY_COMPILE_TAG, "LazyCompile")                                     \
