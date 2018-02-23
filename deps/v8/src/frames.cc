@@ -474,6 +474,12 @@ StackFrame::Type StackFrame::ComputeType(const StackFrameIteratorBase* iterator,
               return OPTIMIZED;
             }
             return BUILTIN;
+          case Code::STUB:
+            if (code_obj->is_interpreter_function_stack_hack()) {
+              return INTERPRETED;
+            } else {
+              break;
+            }
           case Code::OPTIMIZED_FUNCTION:
             return OPTIMIZED;
           case Code::WASM_FUNCTION:
