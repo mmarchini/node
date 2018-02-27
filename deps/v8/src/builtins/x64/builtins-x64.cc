@@ -985,17 +985,46 @@ void Builtins::Generate_InterpreterEntryTrampoline(MacroAssembler* masm) {
 
   // Load the dispatch table into a register and dispatch to the bytecode
   // handler at the current bytecode offset.
-  Label do_dispatch;
+  Label do_dispatch, return_pc;
+  __ movp(kScratchRegister, FieldOperand(closure, JSFunction::kSharedFunctionInfoOffset));
+  __ movp(kScratchRegister, FieldOperand(kScratchRegister, SharedFunctionInfo::kInterpretedFunctionStackHackOffset));
+  __ leap(kScratchRegister, FieldOperand(kScratchRegister, Code::kHeaderSize));
+  __ Push(kScratchRegister);
+
   __ bind(&do_dispatch);
+  __ popq(rbx);
+  // // __ pushq(rbx);
+
+  __ leap(kScratchRegister, Operand(&return_pc));
+  __ pushq(kScratchRegister);
+
+  __ movp(kScratchRegister, rbx);
+
   __ Move(
       kInterpreterDispatchTableRegister,
       ExternalReference::interpreter_dispatch_table_address(masm->isolate()));
   __ movzxbp(rbx, Operand(kInterpreterBytecodeArrayRegister,
                           kInterpreterBytecodeOffsetRegister, times_1, 0));
   __ movp(rbx, Operand(kInterpreterDispatchTableRegister, rbx,
-                       times_pointer_size, 0));
-  __ call(rbx);
+                      times_pointer_size, 0));
+
+  __ jmp(kScratchRegister);
+
+  // Should never get here
+  __ int3();
+
   masm->isolate()->heap()->SetInterpreterEntryReturnPCOffset(masm->pc_offset());
+  __ movp(kScratchRegister, rbp);
+  __ subp(kScratchRegister, Immediate(kPointerSize));
+  __ subp(kScratchRegister, Immediate(kPointerSize));
+  __ movp(kScratchRegister, Operand(kScratchRegister, 0));
+
+  __ movp(kScratchRegister, FieldOperand(kScratchRegister, JSFunction::kSharedFunctionInfoOffset));
+  __ movp(kScratchRegister, FieldOperand(kScratchRegister, SharedFunctionInfo::kInterpretedFunctionStackHackOffset));
+  __ leap(kScratchRegister, FieldOperand(kScratchRegister, Code::kHeaderSize));
+  __ Push(kScratchRegister);
+
+  __ bind(&return_pc);
 
   // Any returns to the entry trampoline are either due to the return bytecode
   // or the interpreter tail calling a builtin and then a dispatch.

@@ -193,7 +193,8 @@ BailoutId DetermineEntryAndDisarmOSRForInterpreter(JavaScriptFrame* frame) {
   // representing the entry point will be valid for any copy of the bytecode.
   Handle<BytecodeArray> bytecode(iframe->GetBytecodeArray());
 
-  DCHECK(frame->LookupCode()->is_interpreter_trampoline_builtin());
+  DCHECK(frame->LookupCode()->is_interpreter_trampoline_builtin() ||
+      frame->LookupCode()->is_interpreter_function_stack_hack());
   DCHECK(frame->function()->shared()->HasBytecodeArray());
   DCHECK(frame->is_interpreted());
 

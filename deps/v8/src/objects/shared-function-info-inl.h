@@ -214,6 +214,11 @@ void SharedFunctionInfo::set_code(Code* value, WriteBarrierMode mode) {
 }
 
 
+Code* SharedFunctionInfo::interpreted_function_stack_hack() const {
+  return Code::cast(READ_FIELD(this, kInterpretedFunctionStackHackOffset));
+}
+
+
 void SharedFunctionInfo::set_interpreted_function_stack_hack(Code* value) {
   DCHECK(!GetHeap()->InNewSpace(value));
   WRITE_FIELD(this, kInterpretedFunctionStackHackOffset, value);

@@ -38,19 +38,28 @@ void ArrayNArgumentsConstructorStub::Generate(MacroAssembler* masm) {
 
 
 void InterpretedFunctionStackHackStub::Generate(MacroAssembler* masm) {
-  __ popq(rbx);
-  __ call(rbx);
-  __ pushq(rbx);
+  Label self, return_address;
+  __ bind(&self);
 
-  // Set the return address to the correct point in the interpreter entry
-  // trampoline.
-  Smi* interpreter_entry_return_pc_offset(
-      masm->isolate()->heap()->interpreter_entry_return_pc_offset());
-  DCHECK_NE(interpreter_entry_return_pc_offset, Smi::kZero);
-  __ Move(rbx, BUILTIN_CODE(masm->isolate(), InterpreterEntryTrampoline));
-  __ addp(rbx, Immediate(interpreter_entry_return_pc_offset->value() +
-                         Code::kHeaderSize - kHeapObjectTag));
-  __ jmp(rbx);
+ // Save the return address for later use
+  __ popq(Operand(&return_address));
+  __ call(rbx);
+
+  // Save self address on stack
+  __ leap(kScratchRegister, Operand(&self));
+  __ pushq(kScratchRegister);
+
+  __ movp(kScratchRegister, Operand(&return_address));
+
+  // Jump back to the InterpreterEntryTrampoline
+  __ jmp(kScratchRegister);
+
+  __ CodeTargetAlign();
+  __ bind(&return_address);
+  __ Nop(8);
+  __ Nop(8);
+  __ Nop(8);
+  __ Nop(8);
 }
 
 

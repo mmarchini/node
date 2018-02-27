@@ -107,6 +107,7 @@ class SharedFunctionInfo : public HeapObject {
   inline bool HasLength() const;
   inline void set_length(int value);
 
+  inline Code* interpreted_function_stack_hack() const;
   inline void set_interpreted_function_stack_hack(Code* code);
 
   // [internal formal parameter count]: The declared number of parameters.
