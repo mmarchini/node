@@ -302,6 +302,7 @@ void Code::initialize_flags(Kind kind, bool has_unwinding_info,
 
 inline bool Code::is_interpreter_trampoline_builtin() const {
   Builtins* builtins = GetIsolate()->builtins();
+  // TODO(mmarchini): maybe should be true if it's an InterpretedFunction code stub
   bool is_interpreter_trampoline =
       (this == builtins->builtin(Builtins::kInterpreterEntryTrampoline) ||
        this == builtins->builtin(Builtins::kInterpreterEnterBytecodeAdvance) ||

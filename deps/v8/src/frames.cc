@@ -168,6 +168,7 @@ bool StackTraceFrameIterator::IsValidFrame(StackFrame* frame) const {
 
 namespace {
 
+// TODO (mmarchini): should be true if inside InterpretedFunction code stub
 bool IsInterpreterFramePc(Isolate* isolate, Address pc) {
   Code* interpreter_entry_trampoline =
       isolate->builtins()->builtin(Builtins::kInterpreterEntryTrampoline);
