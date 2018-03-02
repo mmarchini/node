@@ -6,7 +6,6 @@
 
 #include <fstream>
 #include <memory>
-#include <iostream>
 
 #include "src/ast/prettyprinter.h"
 #include "src/base/platform/platform.h"
@@ -202,10 +201,10 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::ExecuteJobImpl() {
   return SUCCEEDED;
 }
 
-#if V8_TARGET_ARCH_X64
 Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
     Isolate* isolate) {
   Handle<Code> trampoline = BUILTIN_CODE(isolate, InterpreterEntryTrampoline);
+#if V8_TARGET_ARCH_X64
   CompilationInfo* compilation_info = this->compilation_info();
 
   InterpretedFunctionStackHackStub stub(isolate);
@@ -226,9 +225,9 @@ Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
   PROFILE(isolate, CodeCreateEvent(log_tag, *abstract_code, *shared,
                                     script_name, line_num, column_num));
 
+#endif
   return trampoline;
 }
-#endif
 
 InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
     Isolate* isolate) {
@@ -255,11 +254,7 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
 
   compilation_info()->SetBytecodeArray(bytecodes);
 
-#if V8_TARGET_ARCH_X64
   compilation_info()->SetCode(DuplicateInterpreterEntryTrampoline(isolate));
-#else
-  compilation_info()->SetCode(BUILTIN_CODE(isolate, InterpreterEntryTrampoline));
-#endif
   return SUCCEEDED;
 }
 

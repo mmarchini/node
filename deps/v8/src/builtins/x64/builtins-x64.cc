@@ -993,7 +993,6 @@ void Builtins::Generate_InterpreterEntryTrampoline(MacroAssembler* masm) {
 
   __ bind(&do_dispatch);
   __ popq(rbx);
-  // // __ pushq(rbx);
 
   __ leap(kScratchRegister, Operand(&return_pc));
   __ pushq(kScratchRegister);
@@ -1006,7 +1005,7 @@ void Builtins::Generate_InterpreterEntryTrampoline(MacroAssembler* masm) {
   __ movzxbp(rbx, Operand(kInterpreterBytecodeArrayRegister,
                           kInterpreterBytecodeOffsetRegister, times_1, 0));
   __ movp(rbx, Operand(kInterpreterDispatchTableRegister, rbx,
-                      times_pointer_size, 0));
+                       times_pointer_size, 0));
 
   __ jmp(kScratchRegister);
 
