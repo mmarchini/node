@@ -202,6 +202,7 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::ExecuteJobImpl() {
   return SUCCEEDED;
 }
 
+#if V8_TARGET_ARCH_X64
 Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
     Isolate* isolate) {
   Handle<Code> trampoline = BUILTIN_CODE(isolate, InterpreterEntryTrampoline);
@@ -227,6 +228,7 @@ Handle<Code> InterpreterCompilationJob::DuplicateInterpreterEntryTrampoline(
 
   return trampoline;
 }
+#endif
 
 InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
     Isolate* isolate) {
@@ -253,7 +255,11 @@ InterpreterCompilationJob::Status InterpreterCompilationJob::FinalizeJobImpl(
 
   compilation_info()->SetBytecodeArray(bytecodes);
 
+#if V8_TARGET_ARCH_X64
   compilation_info()->SetCode(DuplicateInterpreterEntryTrampoline(isolate));
+#else
+  compilation_info()->SetCode(BUILTIN_CODE(isolate, InterpreterEntryTrampoline));
+#endif
   return SUCCEEDED;
 }
 
