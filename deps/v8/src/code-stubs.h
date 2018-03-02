@@ -38,7 +38,6 @@ class Node;
   V(MathPow)                                  \
   V(ProfileEntryHook)                         \
   V(StoreSlowElement)                         \
-  V(InterpretedFunctionStackHack)             \
   /* --- TurboFanCodeStubs --- */             \
   V(ArrayNoArgumentConstructor)               \
   V(ArraySingleArgumentConstructor)           \
@@ -91,6 +90,13 @@ class Node;
 #endif
 
 // List of code stubs only used on S390 platforms.
+#ifdef V8_TARGET_ARCH_X64
+#define CODE_STUB_LIST_X64(V) V(InterpretedFunctionStackHack)
+#else
+#define CODE_STUB_LIST_X64(V)
+#endif
+
+// List of code stubs only used on S390 platforms.
 #ifdef V8_TARGET_ARCH_S390
 #define CODE_STUB_LIST_S390(V) V(DirectCEntry)
 #else
@@ -104,6 +110,7 @@ class Node;
   CODE_STUB_LIST_ARM64(V)         \
   CODE_STUB_LIST_PPC(V)           \
   CODE_STUB_LIST_MIPS(V)          \
+  CODE_STUB_LIST_X64(V)           \
   CODE_STUB_LIST_S390(V)
 
 static const int kHasReturnedMinusZeroSentinel = 1;
@@ -964,6 +971,7 @@ class ArrayNArgumentsConstructorStub : public PlatformCodeStub {
   DEFINE_PLATFORM_CODE_STUB(ArrayNArgumentsConstructor, PlatformCodeStub);
 };
 
+#ifdef V8_TARGET_ARCH_X64
 class InterpretedFunctionStackHackStub : public PlatformCodeStub {
  public:
   explicit InterpretedFunctionStackHackStub(Isolate* isolate)
@@ -973,6 +981,7 @@ class InterpretedFunctionStackHackStub : public PlatformCodeStub {
   DEFINE_NULL_CALL_INTERFACE_DESCRIPTOR();
   DEFINE_PLATFORM_CODE_STUB(InterpretedFunctionStackHack, PlatformCodeStub);
 };
+#endif
 
 class StoreSlowElementStub : public TurboFanCodeStub {
  public:
