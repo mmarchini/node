@@ -169,9 +169,25 @@ bool StackTraceFrameIterator::IsValidFrame(StackFrame* frame) const {
 
 namespace {
 
-bool IsInterpreterFramePc(Isolate* isolate, Address pc) {
+bool IsInterpreterFramePc(Isolate* isolate, Address pc,
+                          StackFrame::State* state) {
   Code* interpreter_entry_trampoline =
       isolate->builtins()->builtin(Builtins::kInterpreterEntryTrampoline);
+  if (FLAG_interpreted_frames_native_stack) {
+    Object* maybe_function =
+        Memory::Object_at(state->fp + StandardFrameConstants::kFunctionOffset);
+    if (maybe_function->IsSmi() ||
+        Internals::HasHeapObjectTag(maybe_function)) {
+      return false;
+    }
+    if (!maybe_function->IsJSFunction()) {
+      return false;
+    }
+    interpreter_entry_trampoline = JSFunction::cast(maybe_function)->code();
+    if (!interpreter_entry_trampoline->is_interpreter_trampoline_builtin()) {
+      return false;
+    }
+  }
   Code* interpreter_bytecode_advance =
       isolate->builtins()->builtin(Builtins::kInterpreterEnterBytecodeAdvance);
   Code* interpreter_bytecode_dispatch =
@@ -219,7 +235,7 @@ SafeStackFrameIterator::SafeStackFrameIterator(
     if (IsValidStackAddress(sp)) {
       MSAN_MEMORY_IS_INITIALIZED(sp, kPointerSize);
       Address tos = ReadMemoryAt(reinterpret_cast<Address>(sp));
-      if (IsInterpreterFramePc(isolate, tos)) {
+      if (IsInterpreterFramePc(isolate, tos, &state)) {
         state.pc_address = reinterpret_cast<Address*>(sp);
         advance_frame = false;
       }
@@ -426,8 +442,8 @@ StackFrame::Type StackFrame::ComputeType(const StackFrameIteratorBase* iterator,
     if (!StackFrame::IsTypeMarker(marker)) {
       if (maybe_function->IsSmi()) {
         return NATIVE;
-      } else if (IsInterpreterFramePc(iterator->isolate(),
-                                      *(state->pc_address))) {
+      } else if (IsInterpreterFramePc(iterator->isolate(), *(state->pc_address),
+                                      state)) {
         return INTERPRETED;
       } else {
         return OPTIMIZED;

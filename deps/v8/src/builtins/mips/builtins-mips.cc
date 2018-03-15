@@ -1186,7 +1186,9 @@ static void Generate_InterpreterEnterBytecode(MacroAssembler* masm) {
   Smi* interpreter_entry_return_pc_offset(
       masm->isolate()->heap()->interpreter_entry_return_pc_offset());
   DCHECK_NE(interpreter_entry_return_pc_offset, Smi::kZero);
-  __ li(t0, Operand(BUILTIN_CODE(masm->isolate(), InterpreterEntryTrampoline)));
+  __ lw(t0, MemOperand(fp, StandardFrameConstants::kFunctionOffset));
+  __ lw(t0, FieldMemOperand(fp, JSFunction::kSharedFunctionInfoOffset));
+  __ lw(t0, FieldMemOperand(fp, SharedFunctionInfo::kCodeOffset));
   __ Addu(ra, t0, Operand(interpreter_entry_return_pc_offset->value() +
                           Code::kHeaderSize - kHeapObjectTag));
 

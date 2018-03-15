@@ -5029,6 +5029,51 @@ TEST(InterpreterGenerators) {
   }
 }
 
+TEST(InterpreterWithoutNativeStack) {
+  i::FLAG_interpreted_frames_native_stack = false;
+  HandleAndZoneScope handles;
+  i::Isolate* isolate = handles.main_isolate();
+
+  const char* source_text =
+      "function testInterpreterWithoutNativeStack(a,b) { return a + b };";
+
+  i::Handle<i::Object> o = v8::Utils::OpenHandle(*v8_compile(source_text));
+  i::Handle<i::JSFunction> f = i::Handle<i::JSFunction>::cast(o);
+
+  i::Code* code = f->shared()->code();
+
+  i::Handle<i::Code> interpreter_entry_trampoline =
+      BUILTIN_CODE(isolate, InterpreterEntryTrampoline);
+
+  CHECK(code->is_interpreter_trampoline_builtin());
+  CHECK_EQ(code->instruction_start(),
+           interpreter_entry_trampoline->instruction_start());
+}
+
+TEST(InterpreterWithNativeStack) {
+  i::FLAG_interpreted_frames_native_stack = true;
+
+  HandleAndZoneScope handles;
+  i::Isolate* isolate = handles.main_isolate();
+
+  const char* source_text =
+      "function testInterpreterWithNativeStack(a,b) { return a + b };";
+
+  i::Handle<i::Object> o = v8::Utils::OpenHandle(*v8_compile(source_text));
+  i::Handle<i::JSFunction> f = i::Handle<i::JSFunction>::cast(o);
+
+  i::Code* code = f->shared()->code();
+
+  i::Handle<i::Code> interpreter_entry_trampoline =
+      BUILTIN_CODE(isolate, InterpreterEntryTrampoline);
+
+  CHECK(code->is_interpreter_trampoline_builtin());
+  CHECK_NE(code->instruction_start(),
+           interpreter_entry_trampoline->instruction_start());
+
+  i::FLAG_interpreted_frames_native_stack = false;
+}
+
 }  // namespace interpreter
 }  // namespace internal
 }  // namespace v8
