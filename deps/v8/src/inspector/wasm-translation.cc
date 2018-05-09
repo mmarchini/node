@@ -88,7 +88,7 @@ class WasmTranslation::TranslatorImpl::RawTranslator
   void TranslateBack(TransLocation*) override {}
   const WasmSourceInformation& GetSourceInformation(v8::Isolate*,
                                                     int index) override {
-    static const WasmSourceInformation singleEmptySourceInformation;
+    static const WasmSourceInformation singleEmptySourceInformation = {};
     return singleEmptySourceInformation;
   }
   const String16 GetHash(v8::Isolate*, int index) override {
