@@ -386,7 +386,7 @@ void ExternalCodeEventListener::CodeCreateEvent(
     const char* comment) {
   CodeEvent code_event;
   code_event.code_start_address =
-      static_cast<uintptr_t>(code->InstructionStart());
+      reinterpret_cast<uintptr_t>(code->InstructionStart());
   code_event.code_size = static_cast<size_t>(code->InstructionSize());
   code_event.function_name = isolate_->factory()->empty_string();
   code_event.script_name = isolate_->factory()->empty_string();
@@ -405,7 +405,7 @@ void ExternalCodeEventListener::CodeCreateEvent(
 
   CodeEvent code_event;
   code_event.code_start_address =
-      static_cast<uintptr_t>(code->InstructionStart());
+      reinterpret_cast<uintptr_t>(code->InstructionStart());
   code_event.code_size = static_cast<size_t>(code->InstructionSize());
   code_event.function_name = name_string;
   code_event.script_name = isolate_->factory()->empty_string();
@@ -425,7 +425,7 @@ void ExternalCodeEventListener::CodeCreateEvent(
 
   CodeEvent code_event;
   code_event.code_start_address =
-      static_cast<uintptr_t>(code->InstructionStart());
+      reinterpret_cast<uintptr_t>(code->InstructionStart());
   code_event.code_size = static_cast<size_t>(code->InstructionSize());
   code_event.function_name = name_string;
   code_event.script_name = isolate_->factory()->empty_string();
@@ -448,7 +448,7 @@ void ExternalCodeEventListener::CodeCreateEvent(
 
   CodeEvent code_event;
   code_event.code_start_address =
-      static_cast<uintptr_t>(code->InstructionStart());
+      reinterpret_cast<uintptr_t>(code->InstructionStart());
   code_event.code_size = static_cast<size_t>(code->InstructionSize());
   code_event.function_name = name_string;
   code_event.script_name = source_string;
@@ -470,7 +470,7 @@ void ExternalCodeEventListener::RegExpCodeCreateEvent(AbstractCode* code,
                                                       String* source) {
   CodeEvent code_event;
   code_event.code_start_address =
-      static_cast<uintptr_t>(code->InstructionStart());
+      reinterpret_cast<uintptr_t>(code->InstructionStart());
   code_event.code_size = static_cast<size_t>(code->InstructionSize());
   code_event.function_name = Handle<String>(source, isolate_);
   code_event.script_name = isolate_->factory()->empty_string();
