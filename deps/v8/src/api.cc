@@ -10255,6 +10255,9 @@ const char* CodeEvent::GetCodeEventTypeName(CodeEventType code_event_type) {
       CODE_EVENTS_LIST(V)
 #undef V
   }
+  // NOTE(mmarchini): Fix for GCC
+  DCHECK(false);
+  return "Unknown";
 }
 
 CodeEventHandler::CodeEventHandler(Isolate* isolate) {
