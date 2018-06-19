@@ -59,6 +59,7 @@ static v8::CodeEventType GetCodeEventTypeForTag(
       TAGS_LIST(V)
 #undef V
   }
+  return v8::CodeEventType::kUnknownType;
 }
 #define CALL_CODE_EVENT_HANDLER(Call) \
   if (listener_) {                    \
