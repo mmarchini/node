@@ -10547,30 +10547,61 @@ int postmortem::Value::HasHeapObjectTag() {
   return I::HasHeapObjectTag(obj);
 }
 
+#define READ_MEMORY memory_accessor_->ReadMemory
+
 int postmortem::Value::GetOddballKind() {
-  return 0;
+  typedef internal::Internals I;
+  typedef internal::Object O;
+  return I::SmiValue(
+      reinterpret_cast<O*>(READ_MEMORY(address_ + I::kOddballKindOffset, 2)));
 }
 
 int postmortem::Value::GetInstanceType() {
   typedef internal::Internals I;
-  uintptr_t map = memory_accessor_->ReadMemory(
+  uintptr_t map = READ_MEMORY(
       address_ + I::kHeapObjectMapOffset, internal::kApiPointerSize);
-  return memory_accessor_->ReadMemory(map + I::kMapInstanceTypeOffset, 2);
+  return READ_MEMORY(map + I::kMapInstanceTypeOffset, 2);
 }
 
 bool postmortem::Value::IsUndefined() {
   typedef internal::Internals I;
   if (!HasHeapObjectTag()) return false;
   if (GetInstanceType() != I::kOddballType) return false;
-  return (GetOddballKind() == I::kUndefinedOddballKind);
+  return (GetOddballKind() == I::kUndefinedOddballKind ||
+          GetOddballKind() == internal::Oddball::kTheHole);
+}
+
+bool postmortem::Value::IsNull() {
+  typedef internal::Internals I;
+  if (!HasHeapObjectTag()) return false;
+  if (GetInstanceType() != I::kOddballType) return false;
+  return (GetOddballKind() == I::kNullOddballKind);
+}
+
+bool postmortem::Value::IsNullOrUndefined() {
+  return IsNull() || IsUndefined();
+}
+
+bool postmortem::Value::IsInt32() {
+  // TODO(mmarcini): Handle HeapNumbers as well.
+  i::Object* obj = reinterpret_cast<i::Object*>(address_);
+  return obj->IsSmi();
+  // if (obj->IsSmi()) return true;
+  // return
+}
+
+bool postmortem::Value::IsUint32() {
+  i::Object* obj = reinterpret_cast<i::Object*>(address_);
+  return obj->IsSmi() && (internal::Internals::SmiValue(obj) >= 0);
 }
 
 bool postmortem::Value::IsObject() {
-  typedef internal::Object O;
   typedef internal::Internals I;
   if (!HasHeapObjectTag()) return false;
   return GetInstanceType() == I::kJSObjectType;
 }
+
+#undef READ_MEMORY
 
 
 namespace internal {
