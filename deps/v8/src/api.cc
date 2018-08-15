@@ -8,7 +8,9 @@
 #include <cmath>     // For isnan.
 #include <limits>
 #include <vector>
+#include <iostream>
 #include "include/v8-profiler.h"
+#include "include/v8-postmortem.h"
 #include "include/v8-testing.h"
 #include "include/v8-util.h"
 #include "src/accessors.h"
@@ -10536,6 +10538,38 @@ void Testing::DeoptimizeAll(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   i::HandleScope scope(i_isolate);
   i::Deoptimizer::DeoptimizeAll(i_isolate);
+}
+
+int postmortem::Value::HasHeapObjectTag() {
+  typedef internal::Object O;
+  typedef internal::Internals I;
+  O* obj = reinterpret_cast<O*>(address_);
+  return I::HasHeapObjectTag(obj);
+}
+
+int postmortem::Value::GetOddballKind() {
+  return 0;
+}
+
+int postmortem::Value::GetInstanceType() {
+  typedef internal::Internals I;
+  uintptr_t map = memory_accessor_->ReadMemory(
+      address_ + I::kHeapObjectMapOffset, internal::kApiPointerSize);
+  return memory_accessor_->ReadMemory(map + I::kMapInstanceTypeOffset, 2);
+}
+
+bool postmortem::Value::IsUndefined() {
+  typedef internal::Internals I;
+  if (!HasHeapObjectTag()) return false;
+  if (GetInstanceType() != I::kOddballType) return false;
+  return (GetOddballKind() == I::kUndefinedOddballKind);
+}
+
+bool postmortem::Value::IsObject() {
+  typedef internal::Object O;
+  typedef internal::Internals I;
+  if (!HasHeapObjectTag()) return false;
+  return GetInstanceType() == I::kJSObjectType;
 }
 
 

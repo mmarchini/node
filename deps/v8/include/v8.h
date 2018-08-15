@@ -9232,6 +9232,7 @@ class Internals {
   static const int kForeignType = 0x87;
   static const int kJSSpecialApiObjectType = 0x410;
   static const int kJSApiObjectType = 0x420;
+  static const int kJSReceiverType = 1090U;
   static const int kJSObjectType = 0x421;
 
   static const int kUndefinedOddballKind = 5;
