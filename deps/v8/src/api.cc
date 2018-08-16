@@ -10601,6 +10601,72 @@ bool postmortem::Value::IsObject() {
   return GetInstanceType() == I::kJSObjectType;
 }
 
+double postmortem::Number::Value() {
+  i::Object* obj = reinterpret_cast<i::Object*>(address());
+  return obj->Number();
+}
+
+int64_t postmortem::Integer::Value() {
+  i::Object* obj = reinterpret_cast<i::Object*>(address());
+  if (obj->IsSmi()) {
+    return i::Smi::ToInt(obj);
+  } else {
+    return static_cast<int64_t>(obj->Number());
+  }
+}
+
+
+int32_t postmortem::Int32::Value() {
+  i::Object* obj = reinterpret_cast<i::Object*>(address());
+  if (obj->IsSmi()) {
+    return i::Smi::ToInt(obj);
+  } else {
+    return static_cast<int32_t>(obj->Number());
+  }
+}
+
+
+uint32_t postmortem::Uint32::Value() {
+  i::Object* obj = reinterpret_cast<i::Object*>(address());
+  if (obj->IsSmi()) {
+    return i::Smi::ToInt(obj);
+  } else {
+    return static_cast<uint32_t>(obj->Number());
+  }
+}
+
+
+int postmortem::String::Length() {
+  auto str = reinterpret_cast<i::String*>(address());
+  return str->length();
+}
+
+// int postmortem::String::Utf8Length() {
+
+// }
+
+bool postmortem::String::IsOneByte() {
+  uint32_t type = GetInstanceType();
+  return (type & internal::kOneByteDataHintMask) == internal::kOneByteDataHintTag ||
+         (type & internal::kStringEncodingMask) == internal::kOneByteStringTag;
+}
+
+// bool postmortem::String::ContainsOnlyOneByte() {
+
+// }
+
+// bool postmortem::String::IsExternal() {
+
+// }
+
+// bool postmortem::String::IsExternalOneByte() {
+
+// }
+
+// std::string postmortem::String::ToCString() {
+
+// }
+
 #undef READ_MEMORY
 
 
