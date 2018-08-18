@@ -10540,135 +10540,18 @@ void Testing::DeoptimizeAll(Isolate* isolate) {
   i::Deoptimizer::DeoptimizeAll(i_isolate);
 }
 
-int postmortem::Value::HasHeapObjectTag() {
-  typedef internal::Object O;
-  typedef internal::Internals I;
-  O* obj = reinterpret_cast<O*>(address_);
-  return I::HasHeapObjectTag(obj);
+bool PostmortemAnalyzer::is_enabled_ = false;
+PostmortemAnalyzer* PostmortemAnalyzer::current_ = nullptr;
+
+void PostmortemAnalyzer::Enable() {
+  PostmortemAnalyzer::is_enabled_ = true;
+  PostmortemAnalyzer::current_ = this;
 }
 
-#define READ_MEMORY memory_accessor_->ReadMemory
-
-int postmortem::Value::GetOddballKind() {
-  typedef internal::Internals I;
-  typedef internal::Object O;
-  return I::SmiValue(
-      reinterpret_cast<O*>(READ_MEMORY(address_ + I::kOddballKindOffset, 2)));
+void PostmortemAnalyzer::Disable() {
+  PostmortemAnalyzer::is_enabled_ = false;
+  PostmortemAnalyzer::current_ = nullptr;
 }
-
-int postmortem::Value::GetInstanceType() {
-  typedef internal::Internals I;
-  uintptr_t map = READ_MEMORY(
-      address_ + I::kHeapObjectMapOffset, internal::kApiPointerSize);
-  return READ_MEMORY(map + I::kMapInstanceTypeOffset, 2);
-}
-
-bool postmortem::Value::IsUndefined() {
-  typedef internal::Internals I;
-  if (!HasHeapObjectTag()) return false;
-  if (GetInstanceType() != I::kOddballType) return false;
-  return (GetOddballKind() == I::kUndefinedOddballKind ||
-          GetOddballKind() == internal::Oddball::kTheHole);
-}
-
-bool postmortem::Value::IsNull() {
-  typedef internal::Internals I;
-  if (!HasHeapObjectTag()) return false;
-  if (GetInstanceType() != I::kOddballType) return false;
-  return (GetOddballKind() == I::kNullOddballKind);
-}
-
-bool postmortem::Value::IsNullOrUndefined() {
-  return IsNull() || IsUndefined();
-}
-
-bool postmortem::Value::IsInt32() {
-  // TODO(mmarcini): Handle HeapNumbers as well.
-  i::Object* obj = reinterpret_cast<i::Object*>(address_);
-  return obj->IsSmi();
-  // if (obj->IsSmi()) return true;
-  // return
-}
-
-bool postmortem::Value::IsUint32() {
-  i::Object* obj = reinterpret_cast<i::Object*>(address_);
-  return obj->IsSmi() && (internal::Internals::SmiValue(obj) >= 0);
-}
-
-bool postmortem::Value::IsObject() {
-  typedef internal::Internals I;
-  if (!HasHeapObjectTag()) return false;
-  return GetInstanceType() == I::kJSObjectType;
-}
-
-double postmortem::Number::Value() {
-  i::Object* obj = reinterpret_cast<i::Object*>(address());
-  return obj->Number();
-}
-
-int64_t postmortem::Integer::Value() {
-  i::Object* obj = reinterpret_cast<i::Object*>(address());
-  if (obj->IsSmi()) {
-    return i::Smi::ToInt(obj);
-  } else {
-    return static_cast<int64_t>(obj->Number());
-  }
-}
-
-
-int32_t postmortem::Int32::Value() {
-  i::Object* obj = reinterpret_cast<i::Object*>(address());
-  if (obj->IsSmi()) {
-    return i::Smi::ToInt(obj);
-  } else {
-    return static_cast<int32_t>(obj->Number());
-  }
-}
-
-
-uint32_t postmortem::Uint32::Value() {
-  i::Object* obj = reinterpret_cast<i::Object*>(address());
-  if (obj->IsSmi()) {
-    return i::Smi::ToInt(obj);
-  } else {
-    return static_cast<uint32_t>(obj->Number());
-  }
-}
-
-
-int postmortem::String::Length() {
-  auto str = reinterpret_cast<i::String*>(address());
-  return str->length();
-}
-
-// int postmortem::String::Utf8Length() {
-
-// }
-
-bool postmortem::String::IsOneByte() {
-  uint32_t type = GetInstanceType();
-  return (type & internal::kOneByteDataHintMask) == internal::kOneByteDataHintTag ||
-         (type & internal::kStringEncodingMask) == internal::kOneByteStringTag;
-}
-
-// bool postmortem::String::ContainsOnlyOneByte() {
-
-// }
-
-// bool postmortem::String::IsExternal() {
-
-// }
-
-// bool postmortem::String::IsExternalOneByte() {
-
-// }
-
-// std::string postmortem::String::ToCString() {
-
-// }
-
-#undef READ_MEMORY
-
 
 namespace internal {
 
