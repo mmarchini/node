@@ -9,6 +9,7 @@
 #include <limits>
 #include <vector>
 #include "include/v8-profiler.h"
+#include "include/v8-postmortem.h"
 #include "include/v8-testing.h"
 #include "include/v8-util.h"
 #include "src/accessors.h"
@@ -84,6 +85,10 @@
 #include "src/wasm/wasm-objects-inl.h"
 #include "src/wasm/wasm-result.h"
 #include "src/wasm/wasm-serialization.h"
+
+extern "C" {
+PostmortemTips v8dbg_postmortem_tips;
+}
 
 namespace v8 {
 
@@ -10536,6 +10541,40 @@ void Testing::DeoptimizeAll(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   i::HandleScope scope(i_isolate);
   i::Deoptimizer::DeoptimizeAll(i_isolate);
+}
+
+bool PostmortemAnalyzer::is_enabled_ = false;
+PostmortemAnalyzer* PostmortemAnalyzer::current_ = nullptr;
+
+void PostmortemAnalyzer::Enable() {
+  PostmortemAnalyzer::is_enabled_ = true;
+  PostmortemAnalyzer::current_ = this;
+}
+
+void PostmortemAnalyzer::Disable() {
+  PostmortemAnalyzer::is_enabled_ = false;
+  PostmortemAnalyzer::current_ = nullptr;
+}
+
+void PostmortemAnalyzer::SetCurrentIsolate(Isolate* isolate) {
+  v8dbg_postmortem_tips.current_isolate = isolate;
+}
+
+PostmortemAnalyzer::HeapIterator::HeapIterator(Isolate* isolate) {
+  using I = internal::Internals;
+  using Heap = internal::Heap;
+  // auto analyzer = PostmortemAnalyzer::GetCurrent();
+  Heap* heap = reinterpret_cast<internal::Isolate*>(isolate)->heap();
+  auto new_space = heap->new_space();
+  // heap_iterator_ = new_space->GetObjectIterator();
+  heap_iterator_ = std::unique_ptr<internal::ObjectIterator>(new internal::SemiSpaceIterator(new_space));
+}
+
+PostmortemAnalyzer::HeapIterator::~HeapIterator() {
+}
+
+Value* PostmortemAnalyzer::HeapIterator::next() {
+  return reinterpret_cast<Value*>(heap_iterator_->Next());
 }
 
 

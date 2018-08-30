@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "v8-version.h"  // NOLINT(build/include)
+#include "v8-postmortem.h"  // NOLINT(build/include)
 #include "v8config.h"    // NOLINT(build/include)
 
 // We reserve the V8_* prefix for macros defined in V8 public API and
@@ -139,6 +140,7 @@ class Isolate;
 class CallHandlerHelper;
 class EscapableHandleScope;
 template<typename T> class ReturnValue;
+class PostmortemAnalyzer;
 
 namespace internal {
 class Arguments;
@@ -9232,6 +9234,7 @@ class Internals {
   static const int kForeignType = 0x87;
   static const int kJSSpecialApiObjectType = 0x410;
   static const int kJSApiObjectType = 0x420;
+  static const int kJSReceiverType = 1090U;
   static const int kJSObjectType = 0x421;
 
   static const int kUndefinedOddballKind = 5;
@@ -9323,11 +9326,29 @@ class Internals {
     return reinterpret_cast<internal::Object**>(addr + index * kApiPointerSize);
   }
 
+  template <typename T, typename P>
+  V8_INLINE static T ReadPtr(P ptr) {
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      return analyzer->ReadObject<T>(reinterpret_cast<uintptr_t>(ptr));
+    }
+    return *reinterpret_cast<T*>(ptr);
+  }
+
+  template <typename T, typename P>
+  V8_INLINE static T ReadArray(P ptr, int idx) {
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      return analyzer->ReadObject<T>(reinterpret_cast<uintptr_t>(&(ptr[idx])));
+    }
+    return ptr[idx];
+  }
+
   template <typename T>
   V8_INLINE static T ReadField(const internal::Object* ptr, int offset) {
     const uint8_t* addr =
         reinterpret_cast<const uint8_t*>(ptr) + offset - kHeapObjectTag;
-    return *reinterpret_cast<const T*>(addr);
+    return ReadPtr<const T>(addr);
   }
 
   template <typename T>
@@ -9978,7 +9999,7 @@ bool Value::IsUndefined() const {
 bool Value::QuickIsUndefined() const {
   typedef internal::Object O;
   typedef internal::Internals I;
-  O* obj = *reinterpret_cast<O* const*>(this);
+  O* obj = I::ReadPtr<O* const>(this);
   if (!I::HasHeapObjectTag(obj)) return false;
   if (I::GetInstanceType(obj) != I::kOddballType) return false;
   return (I::GetOddballKind(obj) == I::kUndefinedOddballKind);
@@ -10013,7 +10034,7 @@ bool Value::IsNullOrUndefined() const {
 bool Value::QuickIsNullOrUndefined() const {
   typedef internal::Object O;
   typedef internal::Internals I;
-  O* obj = *reinterpret_cast<O* const*>(this);
+  O* obj = I::ReadPtr<O* const>(this);
   if (!I::HasHeapObjectTag(obj)) return false;
   if (I::GetInstanceType(obj) != I::kOddballType) return false;
   int kind = I::GetOddballKind(obj);

@@ -1022,7 +1022,13 @@ class Heap {
 
   inline Address NewSpaceTop();
 
-  NewSpace* new_space() { return new_space_; }
+  NewSpace* new_space() {
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      return analyzer->ReadObject<NewSpace*>(reinterpret_cast<uintptr_t>(&new_space_));
+    }
+    return new_space_;
+  }
   OldSpace* old_space() { return old_space_; }
   CodeSpace* code_space() { return code_space_; }
   MapSpace* map_space() { return map_space_; }

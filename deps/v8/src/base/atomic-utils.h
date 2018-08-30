@@ -10,6 +10,7 @@
 
 #include "src/base/atomicops.h"
 #include "src/base/macros.h"
+#include "include/v8.h"
 
 namespace v8 {
 namespace base {
