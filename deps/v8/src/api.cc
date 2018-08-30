@@ -87,6 +87,10 @@
 #include "src/wasm/wasm-result.h"
 #include "src/wasm/wasm-serialization.h"
 
+extern "C" {
+PostmortemTips v8dbg_postmortem_tips;
+}
+
 namespace v8 {
 
 /*
@@ -10552,6 +10556,34 @@ void PostmortemAnalyzer::Disable() {
   PostmortemAnalyzer::is_enabled_ = false;
   PostmortemAnalyzer::current_ = nullptr;
 }
+
+void PostmortemAnalyzer::SetCurrentIsolate(Isolate* isolate) {
+  v8dbg_postmortem_tips.current_isolate = isolate;
+}
+
+PostmortemAnalyzer::HeapIterator::HeapIterator(Isolate* isolate) {
+  using I = internal::Internals;
+  using Heap = internal::Heap;
+  std::cout << 1 << std::endl;
+  // auto analyzer = PostmortemAnalyzer::GetCurrent();
+  Heap* heap = reinterpret_cast<internal::Isolate*>(isolate)->heap();
+  std::cout << 2 << std::endl;
+  auto new_space = heap->new_space();
+  std::cout << "new new new space 0x" << std::hex << new_space << std::dec << std::endl;
+  std::cout << 3 << " with unicorns!" << std::endl;
+  // heap_iterator_ = new_space->GetObjectIterator();
+  heap_iterator_ = std::unique_ptr<internal::ObjectIterator>(new internal::SemiSpaceIterator(new_space));
+  std::cout << 4 << " hue" << std::endl;
+  std::cout << 5 << std::endl;
+}
+
+PostmortemAnalyzer::HeapIterator::~HeapIterator() {
+}
+
+Value* PostmortemAnalyzer::HeapIterator::next() {
+  return reinterpret_cast<Value*>(heap_iterator_->Next());
+}
+
 
 namespace internal {
 

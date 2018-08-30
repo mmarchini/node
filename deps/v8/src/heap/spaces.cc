@@ -1477,6 +1477,7 @@ bool PagedSpace::HasBeenSetUp() { return true; }
 
 
 void PagedSpace::TearDown() {
+  if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "hum" << std::endl;
   for (auto it = begin(); it != end();) {
     Page* page = *(it++);  // Will be erased.
     heap()->memory_allocator()->Free<MemoryAllocator::kFull>(page);
@@ -2352,6 +2353,7 @@ void SpaceWithLinearArea::InlineAllocationStep(Address top,
 }
 
 std::unique_ptr<ObjectIterator> NewSpace::GetObjectIterator() {
+  if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "get object iterator" << std::endl;
   return std::unique_ptr<ObjectIterator>(new SemiSpaceIterator(this));
 }
 
@@ -2692,7 +2694,12 @@ void SemiSpace::AssertValidRange(Address start, Address end) {
 // SemiSpaceIterator implementation.
 
 SemiSpaceIterator::SemiSpaceIterator(NewSpace* space) {
-  Initialize(space->bottom(), space->top());
+  if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "semi space iterator" << std::endl;
+  auto bottom = space->bottom();
+  if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "a" << std::endl;
+  auto topper = space->top();
+  if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "a" << std::endl;
+  Initialize(bottom, topper);
 }
 
 

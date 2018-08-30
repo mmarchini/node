@@ -284,8 +284,12 @@ bool Object::IsNumber() const { return IsSmi() || IsHeapNumber(); }
 bool Object::IsNumeric() const { return IsNumber() || IsBigInt(); }
 
 bool HeapObject::IsFiller() const {
+  if (POSTMORTEM_MODE) std::cout << "isfiller?" << std::endl;
   InstanceType instance_type = map()->instance_type();
-  return instance_type == FREE_SPACE_TYPE || instance_type == FILLER_TYPE;
+  if (POSTMORTEM_MODE) std::cout << "isfiller@" << std::endl;
+  auto f = instance_type == FREE_SPACE_TYPE || instance_type == FILLER_TYPE;
+  if (POSTMORTEM_MODE) std::cout << "isfiller!" << std::endl;
+  return f; 
 }
 
 bool HeapObject::IsFixedTypedArrayBase() const {
@@ -927,7 +931,10 @@ MapWord MapWord::FromMap(const Map* map) {
   return MapWord(reinterpret_cast<uintptr_t>(map));
 }
 
-Map* MapWord::ToMap() const { return reinterpret_cast<Map*>(value_); }
+Map* MapWord::ToMap() const { 
+  if (POSTMORTEM_MODE) std::cout << "TO MAP AA" << std::endl;
+  return reinterpret_cast<Map*>(value_); 
+}
 
 bool MapWord::IsForwardingAddress() const {
   return HAS_SMI_TAG(reinterpret_cast<Object*>(value_));
@@ -971,7 +978,12 @@ Isolate* HeapObject::GetIsolate() const {
 }
 
 Map* HeapObject::map() const {
-  return map_word().ToMap();
+  if (POSTMORTEM_MODE) std::cout << "map?" << std::endl;
+  auto m = map_word();
+  if (POSTMORTEM_MODE) std::cout << "map!" << std::endl;
+  auto aa = m.ToMap();
+  if (POSTMORTEM_MODE) std::cout << "map@" << std::endl;
+  return aa;
 }
 
 
@@ -1034,8 +1046,13 @@ HeapObject** HeapObject::map_slot() {
 }
 
 MapWord HeapObject::map_word() const {
-  return MapWord(
-      reinterpret_cast<uintptr_t>(RELAXED_READ_FIELD(this, kMapOffset)));
+  if (POSTMORTEM_MODE) std::cout << "map_word? " << ::v8::PostmortemAnalyzer::is_enabled() << std::endl;
+  auto p = RELAXED_READ_FIELD(this, kMapOffset);
+  if (POSTMORTEM_MODE) std::cout << "map_word has p" << std::endl;
+  auto w = MapWord(
+      reinterpret_cast<uintptr_t>(p));
+  if (POSTMORTEM_MODE) std::cout << "map_word has w" << std::endl;
+  return w;
 }
 
 
@@ -1056,7 +1073,13 @@ void HeapObject::synchronized_set_map_word(MapWord map_word) {
       this, kMapOffset, reinterpret_cast<Object*>(map_word.value_));
 }
 
-int HeapObject::Size() const { return SizeFromMap(map()); }
+int HeapObject::Size() const { 
+  if (POSTMORTEM_MODE) std::cout << "heapobject::size?" << std::endl;
+  auto g = map();
+  if (POSTMORTEM_MODE) std::cout << "heapobject::size g" << std::endl;
+  auto s = SizeFromMap(g);
+  if (POSTMORTEM_MODE) std::cout << "heapobject::size!" << std::endl;
+  return s; }
 
 double HeapNumber::value() const {
   return READ_DOUBLE_FIELD(this, kValueOffset);
@@ -2199,8 +2222,10 @@ FreeSpace* FreeSpace::cast(HeapObject* o) {
 }
 
 int HeapObject::SizeFromMap(Map* map) const {
+  if (::v8::PostmortemAnalyzer::is_enabled()) std::cout << "argh" << std::endl;
   int instance_size = map->instance_size();
   if (instance_size != kVariableSizeSentinel) return instance_size;
+  if (::v8::PostmortemAnalyzer::is_enabled()) std::cout << "argh" << std::endl;
   // Only inline the most frequent cases.
   InstanceType instance_type = map->instance_type();
   if (instance_type >= FIRST_FIXED_ARRAY_TYPE &&

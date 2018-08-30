@@ -510,7 +510,16 @@ class MemoryChunk {
   void AllocateYoungGenerationBitmap();
   void ReleaseYoungGenerationBitmap();
 
-  Address area_start() { return area_start_; }
+  Address area_start() { 
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      std::cout << "area start" << std::endl;
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      Address addr = analyzer->ReadObject<Address>(reinterpret_cast<uintptr_t>(&area_start_));
+      std::cout << "addr ah ta" << std::endl;
+      return addr; 
+    }
+    return area_start_; 
+  }
   Address area_end() { return area_end_; }
   size_t area_size() { return static_cast<size_t>(area_end() - area_start()); }
 
@@ -606,7 +615,19 @@ class MemoryChunk {
 
   bool InFromSpace() { return IsFlagSet(IN_FROM_SPACE); }
 
-  MemoryChunk* next_chunk() { return next_chunk_.Value(); }
+  MemoryChunk* next_chunk() { 
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      std::cout << "next chunk" << std::endl;
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      base::AtomicValue<MemoryChunk*> atom_chunk  =
+        analyzer->ReadObject<base::AtomicValue<MemoryChunk*>>(reinterpret_cast<uintptr_t>(&next_chunk_));
+      std::cout << "that's not it bro" << std::endl;
+      auto val = atom_chunk.Value();
+      std::cout << "ah ta" << std::endl;
+      return val; 
+    }
+    return next_chunk_.Value(); 
+  }
 
   MemoryChunk* prev_chunk() { return prev_chunk_.Value(); }
 
@@ -1612,6 +1633,11 @@ class LinearAllocationArea {
   }
 
   INLINE(Address top()) const {
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+    std::cout << "that's right!" << std::endl;
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      return analyzer->ReadObject<Address>(reinterpret_cast<uintptr_t>(&top_));
+    }
     SLOW_DCHECK(top_ == kNullAddress || (top_ & kHeapObjectTagMask) == 0);
     return top_;
   }
@@ -2002,7 +2028,16 @@ class SpaceWithLinearArea : public Space {
   virtual bool SupportsInlineAllocation() = 0;
 
   // Returns the allocation pointer in this space.
-  Address top() { return allocation_info_.top(); }
+  Address top() {
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      std::cout << "top" << std::endl;
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      LinearAllocationArea area =
+        analyzer->ReadObject<LinearAllocationArea>(reinterpret_cast<uintptr_t>(&allocation_info_));
+      return area.top();
+    }
+    return allocation_info_.top();
+  }
   Address limit() { return allocation_info_.limit(); }
 
   // The allocation top address.
@@ -2414,6 +2449,28 @@ class SemiSpace : public Space {
   // Returns the start address of the first page of the space.
   Address space_start() {
     DCHECK_NE(anchor_.next_page(), anchor());
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      Address ret;
+      std::cout << "space start" << std::endl;
+      {
+        auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+        Page pg =
+          analyzer->ReadObject<Page>(reinterpret_cast<uintptr_t>(&anchor_));
+        {
+          std::cout << "aa" << std::endl;
+          Page* a = pg.next_page();
+          {
+            std::cout << "bb" << std::endl;
+            ret = a->area_start();
+            std::cout << "cc" << std::endl;
+          }
+          std::cout << "dd" << std::endl;
+        }
+        std::cout << "ee" << std::endl;
+      }
+      std::cout << "as you wish" << std::endl;
+      return ret;
+    }
     return anchor_.next_page()->area_start();
   }
 
@@ -2708,7 +2765,19 @@ class NewSpace : public SpaceWithLinearArea {
   Address original_limit() { return original_limit_.Value(); }
 
   // Return the address of the first object in the active semispace.
-  Address bottom() { return to_space_.space_start(); }
+  // TODO (mmarchini): might need to use ReadPtr
+  Address bottom() { 
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      std::cout << "bottom" << std::endl;
+      // auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      // SemiSpace semi_space =
+        // analyzer->ReadObject<SemiSpace>(reinterpret_cast<uintptr_t>(&to_space_));
+      // auto a = semi_space.space_start();
+      // return a;
+    }
+    std::cout << "done" << std::endl;
+    return to_space_.space_start(); 
+  }
 
   // Get the age mark of the inactive semispace.
   Address age_mark() { return from_space_.age_mark(); }

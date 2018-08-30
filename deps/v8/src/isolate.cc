@@ -11,6 +11,7 @@
 #include <sstream>
 #include <unordered_map>
 
+#include "include/v8-postmortem.h"
 #include "src/api.h"
 #include "src/assembler-inl.h"
 #include "src/ast/ast-value-factory.h"
@@ -2578,6 +2579,7 @@ Isolate::Isolate()
   tracing_cpu_profiler_.reset(new TracingCpuProfilerImpl(this));
 
   init_memcopy_functions(this);
+  PostmortemAnalyzer::SetCurrentIsolate(reinterpret_cast<::v8::Isolate*>(this));
 }
 
 
@@ -2794,6 +2796,8 @@ Isolate::~Isolate() {
 
   delete allocator_;
   allocator_ = nullptr;
+
+  PostmortemAnalyzer::SetCurrentIsolate(nullptr);
 }
 
 

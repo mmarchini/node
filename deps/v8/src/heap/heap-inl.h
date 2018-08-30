@@ -103,7 +103,10 @@ PagedSpace* Heap::paged_space(int idx) {
   return static_cast<PagedSpace*>(space_[idx]);
 }
 
-Space* Heap::space(int idx) { return space_[idx]; }
+Space* Heap::space(int idx) {
+  return Internals::ReadArray<Space*>(space_, idx);
+  // return space_[idx];
+}
 
 Address* Heap::NewSpaceAllocationTopAddress() {
   return new_space_->allocation_top_address();

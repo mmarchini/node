@@ -117,7 +117,7 @@ def subdir_files(path, dest, action):
 def files(action):
   is_windows = sys.platform == 'win32'
   output_file = 'node'
-  output_prefix = 'out/Release/'
+  output_prefix = 'out/Debug/'
 
   if 'false' == variables.get('node_shared'):
     if is_windows:
@@ -138,7 +138,7 @@ def files(action):
     action([output_prefix + output_file], 'lib/' + output_file)
 
   if 'true' == variables.get('node_use_dtrace'):
-    action(['out/Release/node.d'], 'lib/dtrace/node.d')
+    action(['out/Debug/node.d'], 'lib/dtrace/node.d')
 
   # behave similarly for systemtap
   action(['src/node.stp'], 'share/systemtap/tapset/')
@@ -170,7 +170,7 @@ def headers(action):
 
   # Add the expfile that is created on AIX
   if sys.platform.startswith('aix'):
-    action(['out/Release/node.exp'], 'include/node/')
+    action(['out/Debug/node.exp'], 'include/node/')
 
   subdir_files('deps/v8/include', 'include/node/', action)
 

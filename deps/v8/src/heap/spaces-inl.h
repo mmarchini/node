@@ -41,20 +41,32 @@ PageRange::PageRange(Address start, Address limit)
 // SemiSpaceIterator
 
 HeapObject* SemiSpaceIterator::Next() {
+  if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 1" << std::endl;
   while (current_ != limit_) {
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 2" << std::endl;
     if (Page::IsAlignedToPageSize(current_)) {
+      if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 3" << std::endl;
       Page* page = Page::FromAllocationAreaAddress(current_);
+      if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 4" << std::endl;
       page = page->next_page();
+      if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 5" << std::endl;
       DCHECK(!page->is_anchor());
+      if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 6" << std::endl;
       current_ = page->area_start();
+      if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 7" << std::endl;
       if (current_ == limit_) return nullptr;
+      if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 8" << std::endl;
     }
     HeapObject* object = HeapObject::FromAddress(current_);
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 9" << std::endl;
     current_ += object->Size();
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 10" << std::endl;
     if (!object->IsFiller()) {
+      if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 11" << std::endl;
       return object;
     }
   }
+  if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) std::cout << "next 12" << std::endl;
   return nullptr;
 }
 

@@ -141,6 +141,7 @@ class Isolate;
 class CallHandlerHelper;
 class EscapableHandleScope;
 template<typename T> class ReturnValue;
+class PostmortemAnalyzer;
 
 namespace internal {
 class Arguments;
@@ -9333,6 +9334,15 @@ class Internals {
       return analyzer->ReadObject<T>(reinterpret_cast<uintptr_t>(ptr));
     }
     return *reinterpret_cast<T*>(ptr);
+  }
+
+  template <typename T, typename P>
+  V8_INLINE static T ReadArray(P ptr, int idx) {
+    if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      return analyzer->ReadObject<T>(reinterpret_cast<uintptr_t>(&(ptr[idx])));
+    }
+    return ptr[idx];
   }
 
   template <typename T>

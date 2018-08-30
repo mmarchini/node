@@ -269,6 +269,8 @@
   (*reinterpret_cast<int8_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_UINT16_FIELD(p, offset) \
+  V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled()) ? \
+      ::v8::PostmortemAnalyzer::GetCurrent()->ReadObject<const uint16_t>(FIELD_ADDR(p, offset)) : \
   (*reinterpret_cast<const uint16_t*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_UINT16_FIELD(p, offset, value) \
@@ -314,8 +316,10 @@
   (*reinterpret_cast<const byte*>(FIELD_ADDR(p, offset)))
 
 #define RELAXED_READ_BYTE_FIELD(p, offset) \
-  static_cast<byte>(base::Relaxed_Load(    \
-      reinterpret_cast<const base::Atomic8*>(FIELD_ADDR(p, offset))))
+  V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled()) ? \
+      ::v8::PostmortemAnalyzer::GetCurrent()->ReadObject<byte>(FIELD_ADDR(p, offset)) : \
+      static_cast<byte>(base::Relaxed_Load(    \
+          reinterpret_cast<const base::Atomic8*>(FIELD_ADDR(p, offset))))
 
 #define WRITE_BYTE_FIELD(p, offset, value) \
   (*reinterpret_cast<byte*>(FIELD_ADDR(p, offset)) = value)

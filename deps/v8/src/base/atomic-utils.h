@@ -7,9 +7,11 @@
 
 #include <limits.h>
 #include <type_traits>
+#include <iostream>
 
 #include "src/base/atomicops.h"
 #include "src/base/macros.h"
+#include "include/v8.h"
 
 namespace v8 {
 namespace base {
@@ -65,7 +67,11 @@ class AtomicValue {
       : value_(cast_helper<T>::to_storage_type(initial)) {}
 
   V8_INLINE T Value() const {
-    return cast_helper<T>::to_return_type(base::Acquire_Load(&value_));
+    if (::v8::PostmortemAnalyzer::is_enabled()) std::cout << "Value 1" << std::endl;
+    auto lala = base::Acquire_Load(&value_);
+    if (::v8::PostmortemAnalyzer::is_enabled()) std::cout << "Value 2" << std::endl;
+    auto ret = cast_helper<T>::to_return_type(lala);
+    return ret;
   }
 
   V8_INLINE bool TrySetValue(T old_value, T new_value) {
