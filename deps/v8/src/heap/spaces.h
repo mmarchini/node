@@ -2443,19 +2443,7 @@ class SemiSpace : public Space {
   Address space_start() {
     DCHECK_NE(anchor_.next_page(), anchor());
     if (V8_UNLIKELY(::v8::PostmortemAnalyzer::is_enabled())) {
-      Address ret;
-      {
-        auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
-        Page pg =
-          analyzer->ReadObject<Page>(reinterpret_cast<uintptr_t>(&anchor_));
-        {
-          Page* a = pg.next_page();
-          {
-            ret = a->area_start();
-          }
-        }
-      }
-      return ret;
+      return (&anchor_)->next_page()->area_start();
     }
     return anchor_.next_page()->area_start();
   }

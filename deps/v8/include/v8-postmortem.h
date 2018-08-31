@@ -1,6 +1,7 @@
 #ifndef _V8_POSTMORTEM_H
 #define _V8_POSTMORTEM_H
 // #include "include/v8.h"
+#include "v8config.h"    // NOLINT(build/include)
 
 namespace v8 {
 
@@ -36,7 +37,7 @@ class PostmortemAnalyzer {
     return PostmortemAnalyzer::current_;
   }
 
-  static bool is_enabled() {
+  V8_INLINE static bool is_enabled() {
     return PostmortemAnalyzer::is_enabled_;
   }
 

@@ -1584,6 +1584,7 @@ template <typename V>
 static inline V ReadUnalignedValue(Address p) {
   ASSERT_TRIVIALLY_COPYABLE(V);
 #if !(V8_TARGET_ARCH_MIPS || V8_TARGET_ARCH_MIPS64 || V8_TARGET_ARCH_ARM)
+  if (POSTMORTEM_MODE) return ::v8::PostmortemAnalyzer::GetCurrent()->ReadObject<const V>(p);
   return *reinterpret_cast<const V*>(p);
 #else   // V8_TARGET_ARCH_MIPS || V8_TARGET_ARCH_MIPS64 || V8_TARGET_ARCH_ARM
   V r;

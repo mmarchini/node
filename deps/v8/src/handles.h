@@ -52,6 +52,10 @@ class HandleBase {
   // Provides the C++ dereference operator.
   V8_INLINE Object* operator*() const {
     SLOW_DCHECK(IsDereferenceAllowed(INCLUDE_DEFERRED_CHECK));
+    if (POSTMORTEM_MODE) {
+      auto analyzer = ::v8::PostmortemAnalyzer::GetCurrent();
+      return analyzer->ReadObject<Object*>(reinterpret_cast<uintptr_t>(location_));
+    }
     return *location_;
   }
 
