@@ -13,6 +13,8 @@ const runBenchmark = require('../common/benchmark');
 runBenchmark('async_hooks',
              [
                'method=trackingDisabled',
+               'asyncMethod=callbacks',
+               'type=async-resource',
                'n=10'
              ],
              {});
