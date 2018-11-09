@@ -31,7 +31,7 @@
 
 // TODO(mcollina): should this be moved in a more public space?
 // embedders will not be able to use this field
-#define EXECUTION_RESOURCE_FIELD 10
+#define EXECUTION_RESOURCES_FIELD 10
 
 using v8::Context;
 using v8::Function;
@@ -113,6 +113,78 @@ static void DestroyAsyncIdsCallback(void* arg) {
     DestroyAsyncIdsCallback(env, nullptr);
 }
 
+static v8::Local<v8::Array> GetExecutionAsyncResourceStack(Isolate* isolate) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  Local<v8::Array> execution_resources_stack = v8::Local<v8::Array>::Cast(
+      context->GetEmbedderData(EXECUTION_RESOURCES_FIELD));
+
+  if (!execution_resources_stack->IsArray()) {
+    execution_resources_stack = v8::Array::New(isolate);
+    execution_resources_stack->Set(0, v8::Integer::New(isolate, 0));
+    context->SetEmbedderData(EXECUTION_RESOURCES_FIELD,
+                            execution_resources_stack);
+  }
+
+  return execution_resources_stack;
+}
+
+static void GetExecutionAsyncResource(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  v8::Local<v8::Array> execution_resources_stack =
+      GetExecutionAsyncResourceStack(args.GetIsolate());
+  uint64_t current_index =
+      Local<v8::Integer>::Cast(execution_resources_stack->Get(0))->Value();
+
+  if (current_index <= 0) {
+    args.GetReturnValue().Set(v8::Undefined(isolate));
+    return;
+  }
+  args.GetReturnValue().Set(execution_resources_stack->Get(current_index));
+}
+
+static void PushExecutionAsyncResource(v8::Local<v8::Object> resource) {
+  Isolate* isolate = resource->GetIsolate();
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  v8::Local<v8::Array> execution_resources_stack =
+      GetExecutionAsyncResourceStack(resource->GetIsolate());
+  int64_t current_index =
+      Local<v8::Integer>::Cast(execution_resources_stack->Get(0))->Value();
+
+  current_index++;
+  execution_resources_stack->Set(0, v8::Integer::New(isolate, current_index));
+  execution_resources_stack->Set(current_index, resource);
+}
+
+static void
+PushExecutionAsyncResource(const FunctionCallbackInfo<Value>& args) {
+  PushExecutionAsyncResource(v8::Local<v8::Object>::Cast(args[0]));
+}
+
+static void PopExecutionAsyncResource(Isolate* isolate) {
+  Local<v8::Context> context = isolate->GetCurrentContext();
+
+  Local<v8::Array> execution_resources_stack =
+      GetExecutionAsyncResourceStack(isolate);
+  int64_t current_index =
+      Local<v8::Integer>::Cast(execution_resources_stack->Get(0))->Value();
+
+  if (current_index <= 0) {
+    return;
+  }
+
+  execution_resources_stack->Delete(context, current_index);
+  current_index--;
+  execution_resources_stack->Set(0, v8::Integer::New(isolate, current_index));
+}
+
+static void PopExecutionAsyncResource(const FunctionCallbackInfo<Value>& args) {
+  PopExecutionAsyncResource(args.GetIsolate());
+}
+
 
 void Emit(Environment* env, double async_id, AsyncHooks::Fields type,
           Local<Function> fn) {
@@ -152,8 +224,7 @@ void AsyncWrap::EmitTraceEventBefore() {
 
 void AsyncWrap::EmitBefore(Environment* env, double async_id,
     v8::Local<v8::Object> resource) {
-  v8::Local<v8::Context> context = env->isolate()->GetCurrentContext();
-  context->SetEmbedderData(EXECUTION_RESOURCE_FIELD, resource);
+  PushExecutionAsyncResource(resource);
 
   Emit(env, async_id, AsyncHooks::kBefore,
        env->async_hooks_before_function());
@@ -178,14 +249,13 @@ void AsyncWrap::EmitTraceEventAfter(ProviderType type, double async_id) {
 
 void AsyncWrap::EmitAfter(Environment* env, double async_id) {
   Isolate* isolate = env->isolate();
-  v8::Local<v8::Context> context = env->isolate()->GetCurrentContext();
 
   // If the user's callback failed then the after() hooks will be called at the
   // end of _fatalException().
   Emit(env, async_id, AsyncHooks::kAfter,
        env->async_hooks_after_function());
 
-  context->SetEmbedderData(EXECUTION_RESOURCE_FIELD, v8::Null(isolate));
+  PopExecutionAsyncResource(isolate);
 }
 
 class PromiseWrap : public AsyncWrap {
@@ -264,7 +334,7 @@ static void PromiseHook(PromiseHookType type, Local<Promise> promise,
 
       // needed for async functions :/
       // the top level will not emit before and after
-      env->context()->SetEmbedderData(EXECUTION_RESOURCE_FIELD, wrap->object());
+      PushExecutionAsyncResource(wrap->object());
     }
   }
 
@@ -393,18 +463,6 @@ static void RegisterDestroyHook(const FunctionCallbackInfo<Value>& args) {
     p, AsyncWrap::WeakCallback, v8::WeakCallbackType::kParameter);
 }
 
-static void GetExecutionAsyncResource(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-  args.GetReturnValue().Set(context->GetEmbedderData(EXECUTION_RESOURCE_FIELD));
-}
-
-static void SetExecutionAsyncResource(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-  context->SetEmbedderData(EXECUTION_RESOURCE_FIELD, args[0]);
-}
-
 void AsyncWrap::GetAsyncId(const FunctionCallbackInfo<Value>& args) {
   AsyncWrap* wrap;
   args.GetReturnValue().Set(-1);
@@ -475,10 +533,10 @@ void AsyncWrap::Initialize(Local<Object> target,
   env->SetMethod(target, "disablePromiseHook", DisablePromiseHook);
   env->SetMethod(target, "registerDestroyHook", RegisterDestroyHook);
   env->SetMethod(target, "executionAsyncResource", GetExecutionAsyncResource);
-  env->SetMethod(target, "setExecutionAsyncResource",
-                 SetExecutionAsyncResource);
-
-  context->SetEmbedderData(EXECUTION_RESOURCE_FIELD, v8::Null(isolate));
+  env->SetMethod(target, "pushExecutionAsyncResource",
+                 PushExecutionAsyncResource);
+  env->SetMethod(target, "popExecutionAsyncResource",
+                 PopExecutionAsyncResource);
 
   v8::PropertyAttribute ReadOnlyDontDelete =
       static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontDelete);
