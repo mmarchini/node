@@ -107,17 +107,6 @@ uint32_t TrustedEmbeddedBlobSize() { return v8_Trusted_embedded_blob_size_; }
 #endif
 
 namespace {
-// These variables provide access to the current embedded blob without requiring
-// an isolate instance. This is needed e.g. by Code::InstructionStart, which may
-// not have access to an isolate but still needs to access the embedded blob.
-// The variables are initialized by each isolate in Init(). Writes and reads are
-// relaxed since we can guarantee that the current thread has initialized these
-// variables before accessing them. Different threads may race, but this is fine
-// since they all attempt to set the same values of the blob pointer and size.
-
-std::atomic<const uint8_t*> current_embedded_blob_(nullptr);
-std::atomic<uint32_t> current_embedded_blob_size_(0);
-
 // The various workflows around embedded snapshots are fairly complex. We need
 // to support plain old snapshot builds, nosnap builds, and the requirements of
 // subtly different serialization tests. There's two related knobs to twiddle:
@@ -179,8 +168,8 @@ void FreeCurrentEmbeddedBlob() {
       const_cast<uint8_t*>(Isolate::CurrentEmbeddedBlob()),
       Isolate::CurrentEmbeddedBlobSize());
 
-  current_embedded_blob_.store(nullptr, std::memory_order_relaxed);
-  current_embedded_blob_size_.store(0, std::memory_order_relaxed);
+  Isolate::current_embedded_blob_.store(nullptr, std::memory_order_relaxed);
+  Isolate::current_embedded_blob_size_.store(0, std::memory_order_relaxed);
   sticky_embedded_blob_ = nullptr;
   sticky_embedded_blob_size_ = 0;
 }
@@ -232,6 +221,9 @@ void Isolate::ClearEmbeddedBlob() {
 
 const uint8_t* Isolate::embedded_blob() const { return embedded_blob_; }
 uint32_t Isolate::embedded_blob_size() const { return embedded_blob_size_; }
+
+std::atomic<const uint8_t*> Isolate::current_embedded_blob_(nullptr);
+std::atomic<uint32_t> Isolate::current_embedded_blob_size_(0);
 
 // static
 const uint8_t* Isolate::CurrentEmbeddedBlob() {
@@ -1139,15 +1131,15 @@ Handle<FixedArray> Isolate::CaptureCurrentStackTrace(
   return FixedArray::ShrinkOrEmpty(this, stack_trace_elems, frames_seen);
 }
 
-
-void Isolate::PrintStack(FILE* out, PrintStackMode mode) {
+void Isolate::PrintStack(FILE* out, PrintStackMode mode,
+                         StackFrameState* state) {
   if (stack_trace_nesting_level_ == 0) {
     stack_trace_nesting_level_++;
     StringStream::ClearMentionedObjectCache(this);
     HeapStringAllocator allocator;
     StringStream accumulator(&allocator);
     incomplete_message_ = &accumulator;
-    PrintStack(&accumulator, mode);
+    PrintStack(&accumulator, mode, state);
     accumulator.OutputToFile(out);
     InitializeLoggingAndCounters();
     accumulator.Log(this);
@@ -1163,37 +1155,35 @@ void Isolate::PrintStack(FILE* out, PrintStackMode mode) {
   }
 }
 
-
-static void PrintFrames(Isolate* isolate,
-                        StringStream* accumulator,
-                        StackFrame::PrintMode mode) {
-  StackFrameIterator it(isolate);
+static void PrintFrames(Isolate* isolate, StringStream* accumulator,
+                        StackFrame::PrintMode mode, StackFrameState* state) {
+  StackFrameIterator it(isolate, isolate->thread_local_top(), state);
   for (int i = 0; !it.done(); it.Advance()) {
     it.frame()->Print(accumulator, mode, i++);
   }
 }
 
-void Isolate::PrintStack(StringStream* accumulator, PrintStackMode mode) {
+void Isolate::PrintStack(StringStream* accumulator, PrintStackMode mode,
+                         StackFrameState* state) {
   // The MentionedObjectCache is not GC-proof at the moment.
   DisallowHeapAllocation no_gc;
   HandleScope scope(this);
   DCHECK(accumulator->IsMentionedObjectCacheClear(this));
 
   // Avoid printing anything if there are no frames.
-  if (c_entry_fp(thread_local_top()) == 0) return;
+  if (state == nullptr && c_entry_fp(thread_local_top()) == 0) return;
 
   accumulator->Add(
       "\n==== JS stack trace =========================================\n\n");
-  PrintFrames(this, accumulator, StackFrame::OVERVIEW);
+  PrintFrames(this, accumulator, StackFrame::OVERVIEW, state);
   if (mode == kPrintStackVerbose) {
     accumulator->Add(
         "\n==== Details ================================================\n\n");
-    PrintFrames(this, accumulator, StackFrame::DETAILS);
+    PrintFrames(this, accumulator, StackFrame::DETAILS, state);
     accumulator->PrintMentionedObjectCache(this);
   }
   accumulator->Add("=====================\n\n");
 }
-
 
 void Isolate::SetFailedAccessCheckCallback(
     v8::FailedAccessCheckCallback callback) {

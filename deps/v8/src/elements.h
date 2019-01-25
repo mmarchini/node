@@ -216,6 +216,7 @@ class ElementsAccessor {
                             uint32_t destination_start, int copy_size) = 0;
 
  private:
+  friend class PostmortemDebuggerStatics;
   static ElementsAccessor** elements_accessors_;
   const char* name_;
 

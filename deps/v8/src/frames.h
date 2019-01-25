@@ -83,6 +83,14 @@ class StackHandler {
   V(BUILTIN_EXIT, BuiltinExitFrame)                                       \
   V(NATIVE, NativeFrame)
 
+struct StackFrameState {
+  Address sp = kNullAddress;
+  Address fp = kNullAddress;
+  Address* pc_address = nullptr;
+  Address* callee_pc_address = nullptr;
+  Address* constant_pool_address = nullptr;
+};
+
 // Abstract base class for all stack frames.
 class StackFrame {
  public:
@@ -119,13 +127,7 @@ class StackFrame {
   STATIC_ASSERT((OUTERMOST_JSENTRY_FRAME & kHeapObjectTagMask) !=
                 kHeapObjectTag);
 
-  struct State {
-    Address sp = kNullAddress;
-    Address fp = kNullAddress;
-    Address* pc_address = nullptr;
-    Address* callee_pc_address = nullptr;
-    Address* constant_pool_address = nullptr;
-  };
+  using State = StackFrameState;
 
   // Convert a stack frame type to a marker that can be stored on the stack.
   //
@@ -1200,7 +1202,8 @@ class StackFrameIteratorBase {
   }
 
   // Get the type-specific frame singleton in a given state.
-  StackFrame* SingletonFor(StackFrame::Type type, StackFrame::State* state);
+  StackFrame* SingletonFor(StackFrame::Type type,
+                           const StackFrame::State* state);
   // A helper function, can return a nullptr pointer.
   StackFrame* SingletonFor(StackFrame::Type type);
 
@@ -1216,6 +1219,10 @@ class StackFrameIterator: public StackFrameIteratorBase {
   explicit StackFrameIterator(Isolate* isolate);
   // An iterator that iterates over a given thread's stack.
   StackFrameIterator(Isolate* isolate, ThreadLocalTop* t);
+  // An iterator that iterates over a given thread's stack, starting from the
+  // given location.
+  StackFrameIterator(Isolate* isolate, ThreadLocalTop* t,
+                     StackFrame::State* state);
 
   StackFrame* frame() const {
     DCHECK(!done());
@@ -1226,6 +1233,9 @@ class StackFrameIterator: public StackFrameIteratorBase {
  private:
   // Go back to the first frame.
   void Reset(ThreadLocalTop* top);
+  // Go back to the given frame.
+  void Reset(ThreadLocalTop* top, const StackFrame::State& state,
+             StackFrame::Type type);
 
   DISALLOW_COPY_AND_ASSIGN(StackFrameIterator);
 };
