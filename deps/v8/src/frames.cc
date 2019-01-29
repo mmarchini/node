@@ -76,6 +76,17 @@ StackFrameIterator::StackFrameIterator(Isolate* isolate, ThreadLocalTop* t)
   Reset(t);
 }
 
+StackFrameIterator::StackFrameIterator(Isolate* isolate, ThreadLocalTop* t,
+                                       StackFrame::State* s)
+    : StackFrameIteratorBase(isolate, true) {
+  if (s) {
+    StackFrame::Type type = StackFrame::ComputeType(this, s);
+    Reset(t, *s, type);
+  } else {
+    Reset(t);
+  }
+}
+
 void StackFrameIterator::Advance() {
   DCHECK(!done());
   // Compute the state of the calling frame before restoring
@@ -103,19 +114,23 @@ void StackFrameIterator::Reset(ThreadLocalTop* top) {
   StackFrame::State state;
   StackFrame::Type type = ExitFrame::GetStateForFramePointer(
       Isolate::c_entry_fp(top), &state);
+  Reset(top, state, type);
+}
+
+void StackFrameIterator::Reset(ThreadLocalTop* top,
+                               const StackFrame::State& state,
+                               StackFrame::Type type) {
   handler_ = StackHandler::FromAddress(Isolate::handler(top));
   frame_ = SingletonFor(type, &state);
 }
 
-
-StackFrame* StackFrameIteratorBase::SingletonFor(StackFrame::Type type,
-                                             StackFrame::State* state) {
+StackFrame* StackFrameIteratorBase::SingletonFor(
+    StackFrame::Type type, const StackFrame::State* state) {
   StackFrame* result = SingletonFor(type);
   DCHECK((!result) == (type == StackFrame::NONE));
   if (result) result->state_ = *state;
   return result;
 }
-
 
 StackFrame* StackFrameIteratorBase::SingletonFor(StackFrame::Type type) {
 #define FRAME_TYPE_CASE(type, field) \

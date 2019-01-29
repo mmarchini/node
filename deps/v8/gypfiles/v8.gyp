@@ -2721,6 +2721,32 @@
       ],
     }, # torque
     {
+      'target_name': 'v8_postmortem_debugger',
+      'type': 'static_library',
+      'include_dirs': [
+        '..',
+        '../include/',
+        # This is for `gen/torque-generated`
+        '<(SHARED_INTERMEDIATE_DIR)',
+      ],
+      'conditions': [
+        ['v8_enable_i18n_support==1', {
+          'dependencies': [
+            '<(icu_gyp_path):icui18n',
+            '<(icu_gyp_path):icuuc',
+          ],
+        }],
+      ],
+      'sources': [
+        "../include/v8-postmortem-debugger.h",
+        "../src/debug/v8-postmortem-debugger.cc",
+      ],
+      'dependencies': [
+        'v8_init',
+        'v8_nosnapshot',
+      ],
+    },
+    {
       'target_name': 'postmortem-metadata',
       'type': 'none',
       'variables': {
