@@ -47,7 +47,9 @@ class ChunkSource : public v8::ScriptCompiler::ExternalSourceStream {
     DCHECK_LT(current_, chunks_.size());
     Chunk& next = chunks_[current_++];
     uint8_t* chunk = new uint8_t[next.len];
-    i::MemMove(chunk, next.ptr, next.len);
+    if (next.len > 0) {
+      i::MemMove(chunk, next.ptr, next.len);
+    }
     *src = chunk;
     return next.len;
   }
@@ -751,7 +753,7 @@ TEST(RelocatingCharacterStream) {
   CHECK_EQ('a', two_byte_string_stream->Advance());
   CHECK_EQ('b', two_byte_string_stream->Advance());
   CHECK_EQ(size_t{2}, two_byte_string_stream->pos());
-  i::String* raw = *two_byte_string;
+  i::String raw = *two_byte_string;
   i_isolate->heap()->CollectGarbage(i::NEW_SPACE,
                                     i::GarbageCollectionReason::kUnknown);
   // GC moved the string.

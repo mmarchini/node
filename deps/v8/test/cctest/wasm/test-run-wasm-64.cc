@@ -8,6 +8,7 @@
 
 #include "src/assembler-inl.h"
 #include "src/base/bits.h"
+#include "src/base/overflowing-math.h"
 #include "src/objects-inl.h"
 
 #include "test/cctest/cctest.h"
@@ -31,9 +32,9 @@ WASM_EXEC_TEST(I64Const) {
 
 WASM_EXEC_TEST(I64Const_many) {
   int cntr = 0;
-  FOR_INT32_INPUTS(i) {
+  FOR_UINT32_INPUTS(i) {
     WasmRunner<int64_t> r(execution_tier);
-    const int64_t kExpectedValue = (static_cast<int64_t>(*i) << 32) | cntr;
+    const int64_t kExpectedValue = (static_cast<uint64_t>(*i) << 32) | cntr;
     // return(kExpectedValue)
     BUILD(r, WASM_I64V(kExpectedValue));
     CHECK_EQ(kExpectedValue, r.Call());
@@ -53,7 +54,9 @@ WASM_EXEC_TEST(I64Add) {
   WasmRunner<int64_t, int64_t, int64_t> r(execution_tier);
   BUILD(r, WASM_I64_ADD(WASM_GET_LOCAL(0), WASM_GET_LOCAL(1)));
   FOR_INT64_INPUTS(i) {
-    FOR_INT64_INPUTS(j) { CHECK_EQ(*i + *j, r.Call(*i, *j)); }
+    FOR_INT64_INPUTS(j) {
+      CHECK_EQ(base::AddWithWraparound(*i, *j), r.Call(*i, *j));
+    }
   }
 }
 
@@ -75,7 +78,9 @@ WASM_EXEC_TEST(I64Sub) {
   WasmRunner<int64_t, int64_t, int64_t> r(execution_tier);
   BUILD(r, WASM_I64_SUB(WASM_GET_LOCAL(0), WASM_GET_LOCAL(1)));
   FOR_INT64_INPUTS(i) {
-    FOR_INT64_INPUTS(j) { CHECK_EQ(*i - *j, r.Call(*i, *j)); }
+    FOR_INT64_INPUTS(j) {
+      CHECK_EQ(base::SubWithWraparound(*i, *j), r.Call(*i, *j));
+    }
   }
 }
 
@@ -94,7 +99,8 @@ WASM_EXEC_TEST(I64AddUseOnlyLowWord) {
                WASM_I64_ADD(WASM_GET_LOCAL(0), WASM_GET_LOCAL(1))));
   FOR_INT64_INPUTS(i) {
     FOR_INT64_INPUTS(j) {
-      CHECK_EQ(static_cast<int32_t>(*i + *j), r.Call(*i, *j));
+      CHECK_EQ(static_cast<int32_t>(base::AddWithWraparound(*i, *j)),
+               r.Call(*i, *j));
     }
   }
 }
@@ -105,7 +111,8 @@ WASM_EXEC_TEST(I64SubUseOnlyLowWord) {
                WASM_I64_SUB(WASM_GET_LOCAL(0), WASM_GET_LOCAL(1))));
   FOR_INT64_INPUTS(i) {
     FOR_INT64_INPUTS(j) {
-      CHECK_EQ(static_cast<int32_t>(*i - *j), r.Call(*i, *j));
+      CHECK_EQ(static_cast<int32_t>(base::SubWithWraparound(*i, *j)),
+               r.Call(*i, *j));
     }
   }
 }
@@ -116,7 +123,8 @@ WASM_EXEC_TEST(I64MulUseOnlyLowWord) {
                WASM_I64_MUL(WASM_GET_LOCAL(0), WASM_GET_LOCAL(1))));
   FOR_INT64_INPUTS(i) {
     FOR_INT64_INPUTS(j) {
-      CHECK_EQ(static_cast<int32_t>(*i * *j), r.Call(*i, *j));
+      CHECK_EQ(static_cast<int32_t>(base::MulWithWraparound(*i, *j)),
+               r.Call(*i, *j));
     }
   }
 }
@@ -127,7 +135,7 @@ WASM_EXEC_TEST(I64ShlUseOnlyLowWord) {
                WASM_I64_SHL(WASM_GET_LOCAL(0), WASM_GET_LOCAL(1))));
   FOR_INT64_INPUTS(i) {
     FOR_INT64_INPUTS(j) {
-      int32_t expected = static_cast<int32_t>((*i) << (*j & 0x3F));
+      int32_t expected = static_cast<int32_t>(base::ShlWithWraparound(*i, *j));
       CHECK_EQ(expected, r.Call(*i, *j));
     }
   }
@@ -1164,16 +1172,9 @@ WASM_EXEC_TEST(Call_Int64Sub) {
   BUILD(r, WASM_CALL_FUNCTION(t.function_index(), WASM_GET_LOCAL(0),
                               WASM_GET_LOCAL(1)));
 
-  FOR_INT32_INPUTS(i) {
-    FOR_INT32_INPUTS(j) {
-      int64_t a = static_cast<int64_t>(*i) << 32 |
-                  (static_cast<int64_t>(*j) | 0xFFFFFFFF);
-      int64_t b = static_cast<int64_t>(*j) << 32 |
-                  (static_cast<int64_t>(*i) | 0xFFFFFFFF);
-
-      int64_t expected = static_cast<int64_t>(static_cast<uint64_t>(a) -
-                                              static_cast<uint64_t>(b));
-      CHECK_EQ(expected, r.Call(a, b));
+  FOR_INT64_INPUTS(i) {
+    FOR_INT64_INPUTS(j) {
+      CHECK_EQ(base::SubWithWraparound(*i, *j), r.Call(*i, *j));
     }
   }
 }
@@ -1209,7 +1210,8 @@ WASM_EXEC_TEST(LoadStoreI64_sx) {
       r.builder().BlankMemory();
       memory[size - 1] = static_cast<byte>(i);  // set the high order byte.
 
-      int64_t expected = static_cast<int64_t>(i) << ((size - 1) * 8);
+      int64_t expected = static_cast<uint64_t>(static_cast<int64_t>(i))
+                         << ((size - 1) * 8);
 
       CHECK_EQ(expected, r.Call());
       CHECK_EQ(static_cast<byte>(i), memory[8 + size - 1]);
@@ -1230,7 +1232,8 @@ WASM_EXEC_TEST(I64ReinterpretF64) {
                WASM_LOAD_MEM(MachineType::Float64(), WASM_ZERO)));
 
   FOR_INT32_INPUTS(i) {
-    int64_t expected = static_cast<int64_t>(*i) * 0x300010001;
+    int64_t expected = base::MulWithWraparound(static_cast<int64_t>(*i),
+                                               int64_t{0x300010001L});
     r.builder().WriteMemory(&memory[0], expected);
     CHECK_EQ(expected, r.Call());
   }
@@ -1255,7 +1258,8 @@ WASM_EXEC_TEST(F64ReinterpretI64) {
         WASM_GET_LOCAL(0));
 
   FOR_INT32_INPUTS(i) {
-    int64_t expected = static_cast<int64_t>(*i) * 0x300010001;
+    int64_t expected = base::MulWithWraparound(static_cast<int64_t>(*i),
+                                               int64_t{0x300010001L});
     CHECK_EQ(expected, r.Call(expected));
     CHECK_EQ(expected, r.builder().ReadMemory<int64_t>(&memory[0]));
   }

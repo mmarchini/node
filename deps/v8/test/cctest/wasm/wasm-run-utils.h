@@ -13,7 +13,6 @@
 #include <memory>
 
 #include "src/base/utils/random-number-generator.h"
-#include "src/code-stubs.h"
 #include "src/compiler/compiler-source-position-table.h"
 #include "src/compiler/graph-visualizer.h"
 #include "src/compiler/int64-lowering.h"
@@ -40,6 +39,7 @@
 #include "test/cctest/cctest.h"
 #include "test/cctest/compiler/call-tester.h"
 #include "test/cctest/compiler/graph-builder-tester.h"
+#include "test/cctest/compiler/value-helper.h"
 #include "test/common/wasm/flag-utils.h"
 
 namespace v8 {
@@ -185,6 +185,8 @@ class TestingModuleBuilder {
 
   uint32_t AddBytes(Vector<const byte> bytes);
 
+  uint32_t AddException(FunctionSig* sig);
+
   WasmFunction* GetFunctionAt(int index) {
     return &test_module_->functions[index];
   }
@@ -208,7 +210,7 @@ class TestingModuleBuilder {
     native_module_->SetExecutable(true);
   }
 
-  ModuleEnv CreateModuleEnv();
+  CompilationEnv CreateCompilationEnv();
 
   ExecutionTier execution_tier() const { return execution_tier_; }
 
@@ -224,7 +226,7 @@ class TestingModuleBuilder {
   uint32_t global_offset = 0;
   byte* mem_start_ = nullptr;
   uint32_t mem_size_ = 0;
-  V8_ALIGNED(16) byte globals_data_[kMaxGlobalsSize];
+  alignas(16) byte globals_data_[kMaxGlobalsSize];
   WasmInterpreter* interpreter_ = nullptr;
   ExecutionTier execution_tier_;
   Handle<WasmInstanceObject> instance_object_;
@@ -239,7 +241,7 @@ class TestingModuleBuilder {
 };
 
 void TestBuildingGraph(Zone* zone, compiler::JSGraph* jsgraph,
-                       ModuleEnv* module, FunctionSig* sig,
+                       CompilationEnv* module, FunctionSig* sig,
                        compiler::SourcePositionTable* source_position_table,
                        const byte* start, const byte* end);
 
@@ -263,11 +265,7 @@ class WasmFunctionWrapper : private compiler::GraphAndBuilders {
     intptr_t address = static_cast<intptr_t>(code->instruction_start());
     compiler::NodeProperties::ChangeOp(
         inner_code_node_,
-        kPointerSize == 8
-            ? common()->RelocatableInt64Constant(address,
-                                                 RelocInfo::JS_TO_WASM_CALL)
-            : common()->RelocatableInt32Constant(static_cast<int>(address),
-                                                 RelocInfo::JS_TO_WASM_CALL));
+        common()->ExternalConstant(ExternalReference::FromRawAddress(address)));
   }
 
   const compiler::Operator* IntPtrConstant(intptr_t value) {
@@ -493,7 +491,41 @@ class WasmRunner : public WasmRunnerBase {
     }
   }
 
+  void CheckCallViaJS(double expected, uint32_t function_index,
+                      Handle<Object>* buffer, int count) {
+    Isolate* isolate = builder_.isolate();
+    if (jsfuncs_.size() <= function_index) {
+      jsfuncs_.resize(function_index + 1);
+    }
+    if (jsfuncs_[function_index].is_null()) {
+      jsfuncs_[function_index] = builder_.WrapCode(function_index);
+    }
+    Handle<JSFunction> jsfunc = jsfuncs_[function_index];
+    Handle<Object> global(isolate->context()->global_object(), isolate);
+    MaybeHandle<Object> retval =
+        Execution::Call(isolate, jsfunc, global, count, buffer);
+
+    CHECK(!retval.is_null());
+    Handle<Object> result = retval.ToHandleChecked();
+    if (result->IsSmi()) {
+      CHECK_EQ(expected, Smi::ToInt(*result));
+    } else {
+      CHECK(result->IsHeapNumber());
+      CHECK_DOUBLE_EQ(expected, HeapNumber::cast(*result)->value());
+    }
+  }
+
+  void CheckCallViaJS(double expected, ParamTypes... p) {
+    Isolate* isolate = builder_.isolate();
+    uint32_t function_index = function()->func_index;
+    Handle<Object> buffer[] = {isolate->factory()->NewNumber(p)...};
+    return CheckCallViaJS(expected, function_index, buffer, sizeof...(p));
+  }
+
   Handle<Code> GetWrapperCode() { return wrapper_.GetWrapperCode(); }
+
+ private:
+  std::vector<Handle<JSFunction>> jsfuncs_;
 };
 
 // A macro to define tests that run in different engine configurations.

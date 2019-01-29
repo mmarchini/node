@@ -41,6 +41,7 @@
     'tests': [
       {'name': 'benchmarks', 'variant': 'default'},
       {'name': 'v8testing', 'variant': 'default', 'shards': 4},
+      {'name': 'v8testing', 'variant': 'trusted', 'shards': 4},
       {'name': 'mozilla', 'variant': 'default'},
       {'name': 'test262_variants', 'variant': 'default', 'shards': 6},
     ],
@@ -127,7 +128,7 @@
       {'name': 'mozilla', 'variant': 'extra'},
       {'name': 'optimize_for_size'},
       {'name': 'test262_variants', 'shards': 4},
-      {'name': 'test262_variants', 'variant': 'extra', 'shards': 2},
+      {'name': 'test262_variants', 'variant': 'extra', 'shards': 3},
       {'name': 'v8testing', 'shards': 2},
       {'name': 'v8testing', 'suffix': 'isolates', 'test_args': ['--isolates'], 'shards': 2},
       {'name': 'v8testing', 'variant': 'extra'},
@@ -202,6 +203,7 @@
       {'name': 'test262'},
       {'name': 'v8testing', 'shards': 7},
       {'name': 'v8testing', 'variant': 'extra', 'shards': 3},
+      {'name': 'v8testing', 'variant': 'trusted', 'shards': 2},
     ],
   },
   'v8_linux_arm_lite_rel_ng_triggered': {
@@ -216,6 +218,7 @@
       {'name': 'test262', 'shards': 2},
       {'name': 'v8testing', 'shards': 8},
       {'name': 'v8testing', 'variant': 'extra', 'shards': 3},
+      {'name': 'v8testing', 'variant': 'trusted', 'shards': 2},
     ],
   },
   ##############################################################################
@@ -270,6 +273,11 @@
       {'name': 'v8testing', 'shards': 5},
     ],
   },
+  'v8_linux64_pointer_compression_rel_ng_triggered': {
+    'tests': [
+      {'name': 'v8testing', 'shards': 3},
+    ],
+  },
   'v8_linux64_rel_ng_triggered': {
     'swarming_dimensions' : {
       'cpu': 'x86-64-avx2',
@@ -280,7 +288,7 @@
       {'name': 'mjsunit_sp_frame_access'},
       {'name': 'optimize_for_size'},
       {'name': 'test262_variants', 'shards': 4},
-      {'name': 'test262_variants', 'variant': 'extra', 'shards': 2},
+      {'name': 'test262_variants', 'variant': 'extra', 'shards': 3},
       {'name': 'v8initializers'},
       {'name': 'v8testing', 'shards': 2},
       {'name': 'v8testing', 'variant': 'extra'},
@@ -297,6 +305,11 @@
     'tests': [
       {'name': 'v8initializers'},
       {'name': 'v8testing', 'shards': 2},
+    ],
+  },
+  'v8_linux64_sanitizer_coverage_rel': {
+    'tests': [
+      {'name': 'v8testing', 'shards': 3},
     ],
   },
   'v8_linux64_tsan_rel': {
@@ -319,6 +332,11 @@
       {'name': 'v8testing', 'shards': 2},
     ],
   },
+  'v8_linux64_ubsan_vptr_rel_ng_triggered': {
+    'tests': [
+      {'name': 'v8testing', 'shards': 2},
+    ],
+  },
   'v8_linux64_verify_csa_rel_ng_triggered': {
     'tests': [
       {'name': 'v8testing', 'shards': 2},
@@ -329,10 +347,11 @@
   'v8_linux_arm64_dbg': {
     'tests': [
       {'name': 'mjsunit_sp_frame_access'},
-      {'name': 'mozilla'},
-      {'name': 'test262'},
-      {'name': 'v8testing', 'shards': 7},
-      {'name': 'v8testing', 'variant': 'extra', 'shards': 3},
+      {'name': 'mozilla', 'shards': 2},
+      {'name': 'test262', 'shards': 2},
+      {'name': 'v8testing', 'shards': 10},
+      {'name': 'v8testing', 'variant': 'extra', 'shards': 6},
+      {'name': 'v8testing', 'variant': 'trusted', 'shards': 3},
     ],
   },
   'v8_linux_arm64_gc_stress_dbg': {
@@ -347,6 +366,17 @@
       {'name': 'test262', 'shards': 2},
       {'name': 'v8testing', 'shards': 9},
       {'name': 'v8testing', 'variant': 'extra', 'shards': 6},
+      {'name': 'v8testing', 'variant': 'trusted', 'shards': 3},
+    ],
+  },
+  'v8_linux64_arm64_pointer_compression_rel_ng_triggered': {
+    'swarming_task_attrs': {
+      'expiration': 14400,
+      'hard_timeout': 3600,
+      'priority': 35,
+    },
+    'tests': [
+      {'name': 'v8testing', 'shards': 7},
     ],
   },
   ##############################################################################
@@ -460,7 +490,7 @@
     },
     'tests': [
       {'name': 'mozilla'},
-      {'name': 'test262'},
+      {'name': 'test262', 'shards': 2},
       {'name': 'v8testing', 'shards': 3},
       {'name': 'v8testing', 'variant': 'extra', 'shards': 2},
     ],
@@ -481,7 +511,7 @@
     },
     'tests': [
       {'name': 'mozilla'},
-      {'name': 'test262'},
+      {'name': 'test262', 'shards': 2},
       {'name': 'v8testing', 'shards': 2},
       {'name': 'v8testing', 'variant': 'extra'},
     ],
@@ -563,8 +593,8 @@
       {'name': 'mozilla', 'variant': 'extra'},
       {'name': 'optimize_for_size'},
       {'name': 'test262_variants', 'shards': 6},
-      {'name': 'test262_variants', 'variant': 'code_serializer', 'shards': 1},
-      {'name': 'test262_variants', 'variant': 'extra', 'shards': 2},
+      {'name': 'test262_variants', 'variant': 'code_serializer', 'shards': 2},
+      {'name': 'test262_variants', 'variant': 'extra', 'shards': 3},
       {'name': 'v8testing', 'shards': 3},
       {
         'name': 'v8testing',
@@ -620,8 +650,13 @@
     ],
   },
   'V8 Linux - full debug': {
+    'swarming_task_attrs': {
+      'expiration': 14400,
+      'hard_timeout': 3600,
+      'priority': 35,
+    },
     'tests': [
-      {'name': 'v8testing', 'variant': 'default'},
+      {'name': 'v8testing', 'variant': 'default', 'shards': 3},
     ],
   },
   'V8 Linux - gc stress': {
@@ -664,7 +699,7 @@
     },
     'tests': [
       {'name': 'mozilla', 'variant': 'default'},
-      {'name': 'test262', 'variant': 'default', 'shards': 2},
+      {'name': 'test262', 'variant': 'default', 'shards': 3},
       {'name': 'v8testing', 'variant': 'default', 'shards': 3},
     ],
   },
@@ -763,7 +798,7 @@
       {'name': 'mozilla', 'variant': 'extra'},
       {'name': 'optimize_for_size'},
       {'name': 'test262_variants', 'shards': 5},
-      {'name': 'test262_variants', 'variant': 'extra', 'shards': 2},
+      {'name': 'test262_variants', 'variant': 'extra', 'shards': 3},
       {'name': 'v8testing', 'shards': 2},
       {'name': 'v8testing', 'variant': 'extra'},
       {'name': 'v8testing', 'variant': 'minor_mc', 'shards': 1},
@@ -812,6 +847,18 @@
   },
   'V8 Linux64 - internal snapshot': {
     'tests': [
+      {'name': 'v8testing'},
+    ],
+  },
+  'V8 Linux64 - pointer compression': {
+    'tests': [
+      {'name': 'v8testing', 'shards': 2},
+    ],
+  },
+  'V8 Linux64 - shared': {
+    'tests': [
+      {'name': 'mozilla'},
+      {'name': 'test262'},
       {'name': 'v8testing'},
     ],
   },
@@ -876,12 +923,15 @@
   },
   'V8 Linux64 TSAN - isolates': {
     'tests': [
-      {'name': 'v8testing', 'test_args': ['--isolates'], 'shards': 5},
+      {'name': 'v8testing', 'test_args': ['--isolates'], 'shards': 7},
     ],
   },
   'V8 Linux64 UBSan': {
     'tests': [
+      {'name': 'mozilla'},
+      {'name': 'test262', 'shards': 2},
       {'name': 'v8testing'},
+      {'name': 'v8testing', 'variant': 'extra'},
     ],
   },
   'V8 Linux64 UBSanVptr': {
@@ -896,8 +946,8 @@
     },
     'tests': [
       {'name': 'mozilla'},
-      {'name': 'test262'},
-      {'name': 'v8testing'},
+      {'name': 'test262', 'shards': 2},
+      {'name': 'v8testing', 'shards': 2},
       {'name': 'v8testing', 'variant': 'extra'},
     ],
   },
@@ -908,7 +958,7 @@
     },
     'tests': [
       {'name': 'mozilla'},
-      {'name': 'test262'},
+      {'name': 'test262', 'shards': 2},
       {'name': 'v8testing', 'shards': 3},
       {'name': 'v8testing', 'variant': 'extra'},
     ],
@@ -1014,6 +1064,7 @@
       {'name': 'mozilla', 'variant': 'default'},
       {'name': 'test262', 'variant': 'default', 'shards': 5},
       {'name': 'v8testing', 'variant': 'default', 'shards': 3},
+      {'name': 'v8testing', 'variant': 'trusted', 'shards': 3},
     ],
   },
   'V8 Arm': {
@@ -1037,7 +1088,9 @@
           'cores': '8',
           'os': 'Ubuntu-16.04',
           'cpu': 'armv7l-32-ODROID-XU4',
-        }
+        },
+        # Less parallelism to prevent OOMs in benchmarks.
+        'test_args': ['-j2'],
       },
       {
         'name': 'optimize_for_size',
@@ -1146,6 +1199,7 @@
       {'name': 'test262'},
       {'name': 'v8testing', 'shards': 4},
       {'name': 'v8testing', 'variant': 'extra'},
+      {'name': 'v8testing', 'variant': 'trusted'},
       # Armv8-a.
       {
         'name': 'mozilla',
@@ -1179,8 +1233,9 @@
       {'name': 'mjsunit_sp_frame_access'},
       {'name': 'mozilla'},
       {'name': 'test262'},
-      {'name': 'v8testing', 'shards': 7},
+      {'name': 'v8testing', 'shards': 8},
       {'name': 'v8testing', 'variant': 'extra', 'shards': 3},
+      {'name': 'v8testing', 'variant': 'trusted', 'shards': 2},
       # Armv8-a.
       {
         'name': 'mozilla',
@@ -1196,7 +1251,7 @@
         'name': 'v8testing',
         'suffix': 'armv8-a',
         'test_args': ['--extra-flags', '--enable-armv8'],
-        'shards': 7
+        'shards': 8
       },
       # Novfp3.
       {
@@ -1216,7 +1271,7 @@
         'suffix': 'novfp3',
         'variant': 'default',
         'test_args': ['--novfp3'],
-        'shards': 7
+        'shards': 8
       },
     ],
   },
@@ -1237,15 +1292,21 @@
       {'name': 'test262'},
       {'name': 'v8testing', 'shards': 3},
       {'name': 'v8testing', 'variant': 'extra'},
+      {'name': 'v8testing', 'variant': 'trusted'},
     ],
   },
   'V8 Linux - arm64 - sim - debug': {
+    # TODO(machenbach): Remove longer timeout when this builder scales better.
+    'swarming_task_attrs': {
+      'hard_timeout': 3600,
+    },
     'tests': [
       {'name': 'mjsunit_sp_frame_access'},
-      {'name': 'mozilla'},
-      {'name': 'test262'},
+      {'name': 'mozilla', 'shards': 2},
+      {'name': 'test262', 'shards': 2},
       {'name': 'v8testing', 'shards': 10},
       {'name': 'v8testing', 'variant': 'extra', 'shards': 6},
+      {'name': 'v8testing', 'variant': 'trusted', 'shards': 2},
     ],
   },
   'V8 Linux - arm64 - sim - gc stress': {
@@ -1302,6 +1363,16 @@
     },
     'tests': [
       {'name': 'v8testing', 'shards': 3},
+    ],
+  },
+  'V8 Linux64 - arm64 - sim - pointer compression': {
+    'swarming_task_attrs': {
+      'expiration': 14400,
+      'hard_timeout': 3600,
+      'priority': 35,
+    },
+    'tests': [
+      {'name': 'v8testing', 'shards': 7},
     ],
   },
   'V8 Mips - big endian - nosnap': {
@@ -1463,44 +1534,8 @@
       },
     ],
   },
-  'V8 NumFuzz - nosnap': {
-    'swarming_task_attrs': {
-      'expiration': 14400,
-      'hard_timeout': 3600,
-      'priority': 35,
-    },
-    'tests': [
-      {
-        'name': 'numfuzz',
-        'suffix': 'interrupt-budget',
-        'test_args': [
-          '--total-timeout-sec=2100',
-          '--stress-interrupt-budget=10',
-          '--stress-deopt=5',
-        ]
-      },
-    ],
-  },
-  'V8 NumFuzz - nosnap debug': {
-    'swarming_task_attrs': {
-      'expiration': 14400,
-      'hard_timeout': 3600,
-      'priority': 35,
-    },
-    'tests': [
-      {
-        'name': 'numfuzz',
-        'suffix': 'interrupt-budget',
-        'test_args': [
-          '--total-timeout-sec=2100',
-          '--stress-interrupt-budget=10',
-          '--stress-deopt=5',
-        ]
-      },
-    ],
-  },
   ##############################################################################
-  # Clusterfuzz.
+  # Branches.
   'V8 Linux - beta branch': {
     'swarming_task_attrs': {
       'expiration': 14400,
