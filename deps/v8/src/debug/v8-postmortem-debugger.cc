@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stddef.h>
+
 #include "include/v8-postmortem-debugger.h"
 #include "src/assembler-arch.h"
 #include "src/elements.h"
@@ -107,18 +109,20 @@ extern "C" {
 
 V8_EXPORT void V8PostmortemPrintObject(void* object, RegisterAccessFunction r,
                                        ThreadLocalAccessFunction t,
-                                       StaticAccessFunction s) {
+                                       StaticAccessFunction s,
+                                       std::ostream& output) {
   v8::internal::PostmortemDebuggerStatics statics(t, s);
   if (!statics.SetStatics()) return;
   v8::internal::Object(reinterpret_cast<v8::internal::Address>(object))
-      ->Print();
+      ->Print(output);
 }
 
 V8_EXPORT void V8PostmortemPrintStackTrace(uintptr_t stack_pointer,
                                            uintptr_t program_counter,
                                            RegisterAccessFunction r,
                                            ThreadLocalAccessFunction t,
-                                           StaticAccessFunction s) {
+                                           StaticAccessFunction s,
+                                           FILE* output) {
   v8::internal::PostmortemDebuggerStatics statics(t, s);
   if (!statics.SetStatics()) return;
 
@@ -145,10 +149,10 @@ V8_EXPORT void V8PostmortemPrintStackTrace(uintptr_t stack_pointer,
     state.fp = r(v8::internal::JavaScriptFrame::fp_register().code());
     state.pc_address = &program_counter;
 
-    isolate->PrintStack(stdout, v8::internal::Isolate::kPrintStackVerbose,
+    isolate->PrintStack(output, v8::internal::Isolate::kPrintStackVerbose,
                         &state);
   } else {
-    isolate->PrintStack(stdout);
+    isolate->PrintStack(output);
   }
 }
 
