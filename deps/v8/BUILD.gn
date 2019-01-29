@@ -3286,6 +3286,29 @@ v8_component("v8_libplatform") {
   ]
 }
 
+v8_source_set("v8_postmortem_debugger_base") {
+  visibility = [ ":*" ]  # Only targets in this file can depend on this.
+  testonly = true
+
+  sources = [
+    "include/v8-postmortem-debugger.h",
+    "src/debug/v8-postmortem-debugger.cc",
+  ]
+
+  deps = [
+    ":v8_init",
+    ":v8_nosnapshot",
+  ]
+
+  if (v8_enable_i18n_support) {
+    public_deps = [
+      "//third_party/icu",
+    ]
+  }
+
+  configs = [ ":internal_config" ]
+}
+
 v8_source_set("v8_libsampler") {
   sources = [
     "src/libsampler/sampler.cc",
@@ -3554,6 +3577,18 @@ if (is_component_build) {
 
     public_configs = [ ":external_config" ]
   }
+
+  v8_component("v8_postmortem_debugger") {
+    testonly = true
+
+    public_deps = [
+      ":v8_postmortem_debugger_base",
+    ]
+
+    configs = [ ":internal_config" ]
+
+    public_configs = [ ":external_config" ]
+  }
 } else {
   group("v8") {
     public_deps = [
@@ -3576,6 +3611,16 @@ if (is_component_build) {
     if (v8_use_snapshot) {
       public_deps += [ ":v8_initializers" ]
     }
+
+    public_configs = [ ":external_config" ]
+  }
+
+  group("v8_postmortem_debugger") {
+    testonly = true
+
+    public_deps = [
+      ":v8_postmortem_debugger_base",
+    ]
 
     public_configs = [ ":external_config" ]
   }

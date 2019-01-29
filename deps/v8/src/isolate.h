@@ -93,6 +93,7 @@ class RuntimeProfiler;
 class SaveContext;
 class SetupIsolateDelegate;
 class Simulator;
+struct StackFrameState;
 class StartupDeserializer;
 class StandardFrame;
 class StubCache;
@@ -792,9 +793,11 @@ class Isolate final : private HiddenFactory {
   enum PrintStackMode { kPrintStackConcise, kPrintStackVerbose };
   void PrintCurrentStackTrace(FILE* out);
   void PrintStack(StringStream* accumulator,
-                  PrintStackMode mode = kPrintStackVerbose);
+                  PrintStackMode mode = kPrintStackVerbose,
+                  StackFrameState* state = nullptr);
   V8_EXPORT_PRIVATE void PrintStack(FILE* out,
-                                    PrintStackMode mode = kPrintStackVerbose);
+                                    PrintStackMode mode = kPrintStackVerbose,
+                                    StackFrameState* state = nullptr);
   Handle<String> StackTraceString();
   // Stores a stack trace in a stack-allocated temporary buffer which will
   // end up in the minidump for debugging purposes.
@@ -1643,6 +1646,20 @@ class Isolate final : private HiddenFactory {
 
   static base::Thread::LocalStorageKey per_isolate_thread_data_key_;
   static base::Thread::LocalStorageKey isolate_key_;
+
+  // These variables provide access to the current embedded blob without
+  // requiring an isolate instance. This is needed e.g. by
+  // Code::InstructionStart, which may not have access to an isolate but still
+  // needs to access the embedded blob. The variables are initialized by each
+  // isolate in Init(). Writes and reads are relaxed since we can guarantee that
+  // the current thread has initialized these variables before accessing them.
+  // Different threads may race, but this is fine since they all attempt to set
+  // the same values of the blob pointer and size.
+  static std::atomic<const uint8_t*> current_embedded_blob_;
+  static std::atomic<uint32_t> current_embedded_blob_size_;
+
+  friend class PostmortemDebuggerStatics;
+  friend V8_EXPORT_PRIVATE void FreeCurrentEmbeddedBlob();
 
   // A global counter for all generated Isolates, might overflow.
   static base::Atomic32 isolate_counter_;

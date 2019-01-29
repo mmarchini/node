@@ -23,6 +23,7 @@
     'node_enable_v8_vtunejit%': 'false',
     'node_core_target_name%': 'node',
     'node_lib_target_name%': 'node_lib',
+    'symbol_level': 2,
     'node_intermediate_lib_type%': 'static_library',
     'library_files': [
       'lib/internal/per_context.js',
@@ -252,6 +253,9 @@
         'src',
         'deps/v8/include',
       ],
+      'dependencies': [
+        'deps/v8/gypfiles/v8.gyp:v8_postmortem_debugger',
+      ],
 
       # - "C4244: conversion from 'type1' to 'type2', possible loss of data"
       #   Ususaly safe. Disable for `dep`, enable for `src`
@@ -372,6 +376,7 @@
         'src/js_stream.cc',
         'src/module_wrap.cc',
         'src/node.cc',
+        'src/node_postmortem_host.cc',
         'src/node_api.cc',
         'src/node_binding.cc',
         'src/node_buffer.cc',
