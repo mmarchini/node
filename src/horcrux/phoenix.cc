@@ -5,10 +5,6 @@
 
 #include <v8-postmortem-debugger.h>
 
-void HandleDebuggerRequest() {
-
-}
-
 int main(int argc, char* argv[]) {
   std::ifstream stdin(argv[1]);
   std::ofstream stdout(argv[2]);
@@ -26,14 +22,6 @@ int main(int argc, char* argv[]) {
       // stdin.seekg(0, std::ios::beg);
       if (buffer.empty()) continue;
     }
-    std::cout << "f" << std::endl;
-    std::cout << "      i" << std::endl;
-    std::cout << "      i" << std::endl;
-    std::cout << "      i" << std::endl;
-    std::cout << "      i" << std::endl;
-    std::cout << "      i" << std::endl;
-    std::cout << "      i" << std::endl;
-    std::cout << "      i" << std::endl;
 
     switch (buffer.c_str()[0]) {
       case 's':
