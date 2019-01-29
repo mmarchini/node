@@ -345,6 +345,8 @@
       'sources': [
         'src/horcrux/phoenix.cc'
       ],
+      'cflags': [ '-g',
+                  '-O0' ],
       'dependencies': [
         'deps/v8/gypfiles/v8.gyp:v8_postmortem_debugger',
       ],
@@ -353,28 +355,6 @@
         'deps/v8/include',
       ],
     }, # phoenix
-    {
-      'target_name': 'horcrux',
-      'type': 'shared_library',
-      'sources': [
-        'src/horcrux/horcrux.cc'
-      ],
-      'dependencies': [
-        'phoenix',
-      ],
-      'include_dirs': [
-        'src/horcrux',
-        '/Users/mmarchini/workspace/nodejs/llnode/lldb-3.9/include',
-      ],
-      "conditions": [
-        [ "OS == 'mac'", {
-          "xcode_settings": {
-            # "OTHER_CPLUSPLUSFLAGS" : [ "-std=c++11", "-stdlib=libc++" ],
-            "OTHER_LDFLAGS": [ "-Wl,-undefined,dynamic_lookup" ],
-          },
-        }],
-      ],
-    }, # horcrux
     {
       'target_name': '<(node_lib_target_name)',
       'type': '<(node_intermediate_lib_type)',

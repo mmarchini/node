@@ -1,34 +1,62 @@
 #!/usr/bin/python
 
+import os
+from os import path
+from time import sleep
 import re
 import lldb
 import commands
 import argparse
-
-launch_args = [
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  0,
-  True,
-]
+import tempfile
+from pprint import pprint
+from collections import OrderedDict
 
 HOST = "/Users/mmarchini/workspace/nodejs/node/out/Release/phoenix"
 
 
+class V8Context(object):
+  def __init__(self):
+    self._tmpdir = tempfile.mkdtemp()
+    self.stdin = open(path.join(self._tmpdir, "stdin"), "w+")
+    with open(path.join(self._tmpdir, "stdout"), "w+") as f:
+      self.stdout = open(f.name, "r")
+    self.current_line = 0
+
+  # TODO delete temporary directory and files
+
+
 def v8_load(debugger, args, result, internal_dict):
+  debugger.SetAsync(True)
+
   error = lldb.SBError()
 
   host_target = debugger.CreateTarget(HOST)
-  host_process = host_target.Launch(debugger.GetListener(), *(launch_args + [error]))
-  debugger.SetSelectedTarget(host_target)
+
+  context = V8Context()
+
+  # TODO support multiple targets
+  internal_dict["v8_context"] = context
+
+  launch_parameters = OrderedDict([
+    ("listener", debugger.GetListener()),
+    ("argv", [context.stdin.name, context.stdout.name]),
+    ("envp", None),
+    ("stdin_path", "/dev/null"),
+    ("stdout_path", "/dev/null"),
+    ("stderr_path", "/dev/null"),
+    ("working_directory", None),
+    ("launch_flags", 0),
+    ("stop_at_entry", False),
+    ("error", error),
+  ])
+  print launch_parameters
+  host_process = host_target.Launch(*(launch_parameters.values()))
 
   if error.Fail():
     result.SetError(error)
     return False
+
+  debugger.SetSelectedTarget(host_target)
 
   #  core_target = debugger.CreateTarget(args.core_path)
   #  core_process = core_target.LoadCore(args.core_path)
@@ -81,37 +109,48 @@ def v8_load(debugger, args, result, internal_dict):
   #  core_process.Destroy()
   #  debugger.DeleteTarget(core_target)
 
-  print "a"
-  breakpoint = host_target.BreakpointCreateByName("HandleDebuggerRequest")
-  if not breakpoint.IsValid() or breakpoint.num_locations == 0 or not breakpoint.IsEnabled():
-    print "error trying to set breakpoint"
-    return False
-  print "b"
-  host_process.Continue()
-  print "c"
-
   return True
 
 
-def communicate_with_process(process, message):
-  process.PutSTDIN("%s\n" % message)
-  process.Continue()
-  return process.GetSTDOUT(1000).strip("\n")
+def int_to_buffer(value):
+  value = hex(value)[2:]
+
+  # Fill zero in the left in hex has odd length
+  value = value.rjust((len(value)/2 + 1) * 2, '0')
+
+
+  # Split hex value into bytes (two hex digits)
+  value_bytes = list(map(''.join, zip(*[iter(value)]*2)))
+
+  # Convert bytes into chars and return
+
+  return "".join([chr(int(v, 16)) for v in value_bytes])
 
 
 def v8_stack(debugger, args, result, internal_dict):
   target = debugger.GetSelectedTarget()
-  process = target.GetProcess()
+  context = internal_dict["v8_context"]
+  context.stdin.write("s\n")
+  context.stdin.flush()
 
-  print >>result, communicate_with_host(process, "s")
+  # TODO have control character on stdout
+  sleep(1)
+
+  context.stdout.seek(context.current_line)
+  lines = context.stdout.readlines()
+  context.current_line = context.stdout.tell()
+  print >>result, lines
   return True
 
 
 def v8_print(debugger, args, result, internal_dict):
   target = debugger.GetSelectedTarget()
-  process = target.GetProcess()
+  context = internal_dict["v8_context"]
+  context.stdin.write("p\n")
+  context.stdin.flush()
 
-  print >>result, communicate_with_host(process, "p")
+  context.stdout.sync()
+  print >>result, context.stdout.readlines()
   return True
 
 
