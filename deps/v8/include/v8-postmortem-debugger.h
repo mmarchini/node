@@ -14,6 +14,8 @@
 #define V8_INCLUDE_V8_POSTMORTEM_DEBUGGER_H_
 
 #include <stdint.h>
+#include <fstream>
+#include <iostream>
 
 #include "v8config.h"  // NOLINT(build/include)
 
@@ -47,14 +49,16 @@ typedef StaticAccessResult (*StaticAccessFunction)(const char* name,
 // Prints details about an object. The object should be a tagged pointer.
 V8_EXPORT void V8PostmortemPrintObject(void* object, RegisterAccessFunction r,
                                        ThreadLocalAccessFunction t,
-                                       StaticAccessFunction s);
+                                       StaticAccessFunction s,
+                                       std::ostream& output=std::cout);
 
 // Prints the current JS call stack.
 V8_EXPORT void V8PostmortemPrintStackTrace(uintptr_t stack_pointer,
                                            uintptr_t program_counter,
                                            RegisterAccessFunction r,
                                            ThreadLocalAccessFunction t,
-                                           StaticAccessFunction s);
+                                           StaticAccessFunction s,
+                                           FILE* output=stdout);
 }
 
 #endif

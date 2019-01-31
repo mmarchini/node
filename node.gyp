@@ -23,6 +23,7 @@
     'node_enable_v8_vtunejit%': 'false',
     'node_core_target_name%': 'node',
     'node_lib_target_name%': 'node_lib',
+    'symbol_level': 2,
     'node_intermediate_lib_type%': 'static_library',
     'library_files': [
       'lib/internal/per_context.js',
