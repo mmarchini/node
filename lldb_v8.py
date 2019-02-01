@@ -15,6 +15,11 @@ from collections import OrderedDict
 HOST = "./out/Release/phoenix"
 
 
+# TODO(mmarchini) use Python logger?
+def logger(*args):
+  print "[lldb_v8] ", " ".join(args)
+
+
 class V8Context(object):
   def __init__(self):
     self._tmpdir = tempfile.mkdtemp()
@@ -29,12 +34,29 @@ class V8Context(object):
   # TODO delete temporary directory and files
 
 
+def int_to_buffer(value):
+  value = hex(value)[2:]
+
+  # Fill zero in the left in hex has odd length
+  value = value.rjust((len(value)/2 + 1) * 2, '0')
+
+
+  # Split hex value into bytes (two hex digits)
+  value_bytes = list(map(''.join, zip(*[iter(value)]*2)))
+
+  # Convert bytes into chars and return
+
+  return "".join([chr(int(v, 16)) for v in value_bytes])
+
+
 def v8_load(debugger, args, result, internal_dict):
   debugger.SetAsync(True)
 
   error = lldb.SBError()
 
+  # TODO add some checks
   core_target = debugger.GetSelectedTarget()
+  core_process = core_target.process
 
   host_target = debugger.CreateTarget(HOST)
 
@@ -64,8 +86,6 @@ def v8_load(debugger, args, result, internal_dict):
     result.SetError(error)
     return False
 
-  core_process = core_target.LoadCore(args.core_path)
-  #  core_target = debugger.CreateTarget(args.core_path)
 
   context.host_target = host_target
   context.host_process = host_process
@@ -134,24 +154,18 @@ def v8_load(debugger, args, result, internal_dict):
   return True
 
 
-def int_to_buffer(value):
-  value = hex(value)[2:]
-
-  # Fill zero in the left in hex has odd length
-  value = value.rjust((len(value)/2 + 1) * 2, '0')
-
-
-  # Split hex value into bytes (two hex digits)
-  value_bytes = list(map(''.join, zip(*[iter(value)]*2)))
-
-  # Convert bytes into chars and return
-
-  return "".join([chr(int(v, 16)) for v in value_bytes])
+def v8_context(func):
+  def v8_context_wrapper(debugger, args, result, internal_dict):
+    if not "v8_context" in internal_dict:
+      if not v8_load(debugger, args, result, internal_dict):
+        return False
+    context = internal_dict["v8_context"]
+    return func(debugger, args, result, internal_dict, context)
+  return v8_context_wrapper
 
 
-def v8_stack(debugger, args, result, internal_dict):
-  context = internal_dict["v8_context"]
-
+@v8_context
+def v8_stack(debugger, args, result, internal_dict, context):
   core_target = debugger.GetSelectedTarget()
   core_process = core_target.process
 
@@ -163,29 +177,52 @@ def v8_stack(debugger, args, result, internal_dict):
   context.stdin.write("s %d %d\n" % (stack_pointer, program_counter))
   context.stdin.flush()
 
-  print stack_pointer, program_counter
-
   while True:
     context.stdout.seek(context.current_line)
     request = "".join([line.rstrip('\n') for line in context.stdout.readlines()])
     context.current_line = context.stdout.tell()
 
+    context.host_stdout.seek(context.host_stdout_current_line)
+    lines = "\n".join(context.host_stdout.readlines())
+    context.host_stdout_current_line = context.host_stdout.tell()
+    if lines:
+      print lines.strip("\n")
+
+    if request == "end" or not context.host_process.is_running:
+      break
+
     if not request:
       continue
-
-    if request == "end":
-      break
 
     if request.startswith("GetRegister"):
       register = request.split(" ")[1]
       reg_value = top_frame.FindRegister(register).unsigned
       context.stdin.write(int_to_buffer(reg_value))
       context.stdin.write("\n")
+      context.stdin.flush()
+    # TODO (mmarchini) Implement size argument
     elif request.startswith("GetStaticData"):
-      name = request.split(" ")[1]
-      print name
-      print core_target.FindGlobalVariables(name, 2)
-      print core_target.FindSymbols(name, 2)
+      byte_count, name = request.split(" ")[1:]
+      byte_count = int(byte_count)
+      logger(name)
+      value = int_to_buffer(0)
+      for m in core_target.module_iter():
+        symbol = m.FindSymbol(name)
+        if symbol:
+          if symbol.end_addr.offset - symbol.addr.offset  != byte_count:
+            logger("We're in a hard pickle, yes we are")
+            continue
+          error = lldb.SBError()
+          try_value = core_target.ReadMemory(symbol.addr, byte_count, error)
+          if error.Fail():
+            logger("Oopsie doopsie!")
+            continue
+          value = try_value
+          logger(value)
+          break
+      context.stdin.write(value)
+      context.stdin.write("\n")
+      context.stdin.flush()
 
   context.host_stdout.seek(context.host_stdout_current_line)
   lines = "\n".join(context.host_stdout.readlines())
@@ -194,6 +231,7 @@ def v8_stack(debugger, args, result, internal_dict):
   return True
 
 
+@v8_context
 def v8_print(debugger, args, result, internal_dict):
   target = debugger.GetSelectedTarget()
   context = internal_dict["v8_context"]
@@ -218,7 +256,6 @@ def v8_handler(debugger, command, result, internal_dict):
   subparsers = v8_parser.add_subparsers()
 
   load_parser = subparsers.add_parser('load')
-  load_parser.add_argument("core_path", type=str)
   load_parser.set_defaults(func=v8_load)
 
   stack_parser = subparsers.add_parser('stack')

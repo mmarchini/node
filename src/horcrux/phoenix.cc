@@ -120,11 +120,14 @@ void* GetTlsData(int32_t key) {
 }
 
 
+#define LOGGER(M) std::cout << "[phoenix] " << M << std::endl
+
 StaticAccessResult GetStaticData(const char* name, uint8_t* destination,
                                  size_t byte_count) {
   // TODO (mmarchini) maybe convert to Base64 to avoid special characters
   // issues? Is that even possible (the issues)?
-  output << "GetStaticData " << name << std::endl;
+  output << "GetStaticData " << byte_count << " " << name << std::endl;
+  LOGGER("Loading " << name);
 
   std::string buffer;
   while (true) {
@@ -133,6 +136,13 @@ StaticAccessResult GetStaticData(const char* name, uint8_t* destination,
       input.clear();
       input.sync();
       if (buffer.empty()) continue;
+    }
+
+    // Well, we're ignoring byte_count, so just get the first byte
+    LOGGER(name << "["<< byte_count << "]: ");
+    for (unsigned int i = 0; i < byte_count; i++) {
+      destination[i] = buffer.c_str()[i];
+      LOGGER( "    " << std::hex << unsigned(destination[i]) << std::dec);
     }
 
     return StaticAccessResult::kOk;
@@ -168,12 +178,23 @@ int main(int argc, char* argv[]) {
         strtok(fromBuffer, " ");
         uintptr_t stack_pointer = std::stoul(strtok(nullptr, " "));
         uintptr_t program_counter = std::stoul(strtok(nullptr, " "));
-        // V8PostmortemPrintStackTrace(command->stack_pointer, command->program_counter,
-                                    // &GetRegister, &GetTlsData, &GetStaticData);
-        std::cout << stack_pointer << " " << program_counter << std::endl;
-        uint8_t a;
-        GetStaticData("v8::internal::ElementsAccessor::elements_accessors_", &a, 1);
-        std::cout <<
+        V8PostmortemPrintStackTrace(stack_pointer, program_counter,
+                                    &GetRegister, &GetTlsData, &GetStaticData);
+        // uint8_t a = 42;
+
+        // GetStaticData("v8::internal::ElementsAccessor::elements_accessors_", &a, 1);
+        // std::cout << "elements_accessors_: " << a << std::endl;
+
+        // GetStaticData("v8::internal::Isolate::current_embedded_blob_", &a, 1);
+        // std::cout << "current_embedded_blob_: " << a << std::endl;
+
+        // GetStaticData("v8::internal::Isolate::current_embedded_blob_size_", &a, 1);
+        // std::cout << "current_embedded_blob_size_: " << a << std::endl;
+
+        // GetStaticData("v8::internal::Isolate::isolate_key_", &a, 1);
+        // std::cout << "isolate_key_: " << a << std::endl;
+
+        // std::cout << "done" << std::endl;
         output << "end" << std::endl;
         break;
       }
