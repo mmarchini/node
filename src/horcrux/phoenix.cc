@@ -10,6 +10,8 @@
 
 #include <v8-postmortem-debugger.h>
 
+#define LOGGER(M) std::cout << "[phoenix] " << M << std::endl
+
 static std::ifstream input;
 static std::ofstream output;
 
@@ -116,11 +118,26 @@ uintptr_t GetRegister(int index) {
 
 void* GetTlsData(int32_t key) {
   output << "GetTlsData " << key << std::endl;
-  return nullptr;
+  LOGGER("Loading tls data");
+
+  std::string buffer;
+  while (true) {
+    getline(input, buffer);
+    if (input.eof()) {
+      input.clear();
+      input.sync();
+      if (buffer.empty()) continue;
+    }
+
+    LOGGER("here ya go");
+    LOGGER(buffer);
+
+    unsigned long long value = std::stoul(buffer, nullptr, 16);
+
+    LOGGER("result: " << std::hex << value << std::dec);
+    return reinterpret_cast<void*>(value);
+  }
 }
-
-
-#define LOGGER(M) std::cout << "[phoenix] " << M << std::endl
 
 StaticAccessResult GetStaticData(const char* name, uint8_t* destination,
                                  size_t byte_count) {
@@ -180,21 +197,7 @@ int main(int argc, char* argv[]) {
         uintptr_t program_counter = std::stoul(strtok(nullptr, " "));
         V8PostmortemPrintStackTrace(stack_pointer, program_counter,
                                     &GetRegister, &GetTlsData, &GetStaticData);
-        // uint8_t a = 42;
 
-        // GetStaticData("v8::internal::ElementsAccessor::elements_accessors_", &a, 1);
-        // std::cout << "elements_accessors_: " << a << std::endl;
-
-        // GetStaticData("v8::internal::Isolate::current_embedded_blob_", &a, 1);
-        // std::cout << "current_embedded_blob_: " << a << std::endl;
-
-        // GetStaticData("v8::internal::Isolate::current_embedded_blob_size_", &a, 1);
-        // std::cout << "current_embedded_blob_size_: " << a << std::endl;
-
-        // GetStaticData("v8::internal::Isolate::isolate_key_", &a, 1);
-        // std::cout << "isolate_key_: " << a << std::endl;
-
-        // std::cout << "done" << std::endl;
         output << "end" << std::endl;
         break;
       }

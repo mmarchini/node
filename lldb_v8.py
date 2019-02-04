@@ -140,7 +140,8 @@ def v8_load(debugger, args, result, internal_dict):
     ret = int(ret)
     if ret != range_len:
       failures += 1
-      print "Wrong size written: %s != %s" % (range_len, ret)
+      logger("Couldn't write region [0x%x, 0x%x)" % (addr, addr + range_len))
+      logger("Wrong size written: %s != %s" % (range_len, ret))
       # TODO remove file if not mapped
       #  os.remove(filename)
 
@@ -200,7 +201,6 @@ def v8_stack(debugger, args, result, internal_dict, context):
       context.stdin.write(int_to_buffer(reg_value))
       context.stdin.write("\n")
       context.stdin.flush()
-    # TODO (mmarchini) Implement size argument
     elif request.startswith("GetStaticData"):
       byte_count, name = request.split(" ")[1:]
       byte_count = int(byte_count)
@@ -223,6 +223,17 @@ def v8_stack(debugger, args, result, internal_dict, context):
       context.stdin.write(value)
       context.stdin.write("\n")
       context.stdin.flush()
+    elif request.startswith("GetTlsData"):
+      logger("Loading TLS data")
+      key = int(request.split(" ")[1])
+      logger("for key: %d" % key)
+
+      value = TLSAccessor(debugger).getspecific(key)
+      logger("Result: 0x%x" % value)
+
+      context.stdin.write("%x" % value)
+      context.stdin.write("\n")
+      context.stdin.flush()
 
   context.host_stdout.seek(context.host_stdout_current_line)
   lines = "\n".join(context.host_stdout.readlines())
@@ -232,7 +243,7 @@ def v8_stack(debugger, args, result, internal_dict, context):
 
 
 @v8_context
-def v8_print(debugger, args, result, internal_dict):
+def v8_print(debugger, args, result, internal_dict, context):
   target = debugger.GetSelectedTarget()
   context = internal_dict["v8_context"]
   context.stdin.write("p\n")
@@ -249,6 +260,109 @@ def validate_hex(val):
   if not match:
       raise argparse.ArgumentTypeError
   return int(val, 16)
+
+
+class TLSAccessor(object):
+  """
+  0x7ffff6e7a030 <+0>:   cmpl   $0x1f, %edi
+  0x7ffff6e7a033 <+3>:   ja     0x7ffff6e7a080            ; <+80>
+  0x7ffff6e7a035 <+5>:   movl   %edi, %eax
+  0x7ffff6e7a037 <+7>:   addq   $0x31, %rax
+  0x7ffff6e7a03b <+11>:  shlq   $0x4, %rax
+  0x7ffff6e7a03f <+15>:  movq   %fs:0x10, %rdx
+  0x7ffff6e7a048 <+24>:  addq   %rax, %rdx
+  0x7ffff6e7a04b <+27>:  movq   0x8(%rdx), %rax
+  0x7ffff6e7a04f <+31>:  testq  %rax, %rax
+  0x7ffff6e7a052 <+34>:  je     0x7ffff6e7a06a            ; <+58>
+  0x7ffff6e7a054 <+36>:  movl   %edi, %edi
+  0x7ffff6e7a056 <+38>:  leaq   0x20b2c3(%rip), %rcx      ; __GI___pthread_keys
+  0x7ffff6e7a05d <+45>:  movq   (%rdx), %rsi
+  0x7ffff6e7a060 <+48>:  shlq   $0x4, %rdi
+  0x7ffff6e7a064 <+52>:  cmpq   %rsi, (%rcx,%rdi)
+  0x7ffff6e7a068 <+56>:  jne    0x7ffff6e7a070            ; <+64>
+  0x7ffff6e7a06a <+58>:  rep    retq
+  0x7ffff6e7a06c <+60>:  nopl   (%rax)
+  0x7ffff6e7a070 <+64>:  movq   $0x0, 0x8(%rdx)
+  0x7ffff6e7a078 <+72>:  xorl   %eax, %eax
+  0x7ffff6e7a07a <+74>:  retq
+  0x7ffff6e7a07b <+75>:  nopl   (%rax,%rax)
+  0x7ffff6e7a080 <+80>:  cmpl   $0x3ff, %edi              ; imm = 0x3FF
+  0x7ffff6e7a086 <+86>:  ja     0x7ffff6e7a0b0            ; <+128>
+  0x7ffff6e7a088 <+88>:  movl   %edi, %eax
+  0x7ffff6e7a08a <+90>:  movl   %edi, %edx
+  0x7ffff6e7a08c <+92>:  andl   $0x1f, %eax
+  0x7ffff6e7a08f <+95>:  shrl   $0x5, %edx
+  0x7ffff6e7a092 <+98>:  movq   %fs:0x510(,%rdx,8), %rcx
+  0x7ffff6e7a09b <+107>: testq  %rcx, %rcx
+  0x7ffff6e7a09e <+110>: je     0x7ffff6e7a0b0            ; <+128>
+  0x7ffff6e7a0a0 <+112>: shlq   $0x4, %rax
+  0x7ffff6e7a0a4 <+116>: leaq   (%rcx,%rax), %rdx
+  0x7ffff6e7a0a8 <+120>: jmp    0x7ffff6e7a04b            ; <+27>
+  0x7ffff6e7a0aa <+122>: nopw   (%rax,%rax)
+  0x7ffff6e7a0b0 <+128>: xorl   %eax, %eax
+  0x7ffff6e7a0b2 <+130>: retq
+  """
+
+  def __init__(self, debugger):
+    self.debugger = debugger
+
+
+  def getspecific(self, key):
+    """
+    __pthread_getspecific (glibc 2.27):
+
+    void *
+    __pthread_getspecific (pthread_key_t key)
+    {
+      struct __pthread *self;
+
+      if (key < 0 || key >= __pthread_key_count
+          || __pthread_key_destructors[key] == PTHREAD_KEY_INVALID)
+        return NULL;
+
+      self = _pthread_self ();
+      if (key >= self->thread_specifics_size)
+        return 0;
+
+      return self->thread_specifics[key];
+    }
+    """
+
+    interpreter = self.debugger.GetCommandInterpreter()
+    # https://stackoverflow.com/a/10859835/2956796
+    command_line = "p ((struct pthread*)0x%x)->specific[%d/32][%d%%32]" % (self._pthread_self, key, key)
+    result = lldb.SBCommandReturnObject()
+    result_status = interpreter.HandleCommand(command_line, result)
+    print result.GetOutput()
+    print result.GetError()
+    print re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput())
+    print re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput()).group(1)
+    print int(re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput()).group(1), 16)
+
+    return int(re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput()).group(1), 16)
+
+    #  if key < 0 or key >= pthread_key_count or pthread_key_destructors[key] == PTHREAD_KEY_INVALID:
+      #  return 0
+
+    #  if key >= self.thread_specifics_size:
+      #  return 0
+
+    #  return self.thread_specifics(key)
+
+  @property
+  def _pthread_self(self):
+    """
+    __thread struct __pthread *___pthread_self;
+    """
+    # 0x7ffff6e7a03f <+15>:  movq   %fs:0x10, %rdx
+
+    target = self.debugger.GetSelectedTarget()
+    process = target.process
+    top_frame = process.selected_thread.frame[0]
+
+    return top_frame.FindRegister("fs_base").unsigned
+
+
 
 
 def v8_handler(debugger, command, result, internal_dict):
