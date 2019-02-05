@@ -253,6 +253,9 @@
         'src',
         'deps/v8/include',
       ],
+      'dependencies': [
+        'deps/v8/gypfiles/v8.gyp:v8_postmortem_debugger',
+      ],
 
       # - "C4244: conversion from 'type1' to 'type2', possible loss of data"
       #   Ususaly safe. Disable for `dep`, enable for `src`
@@ -341,22 +344,6 @@
       ],
     }, # node_core_target_name
     {
-      'target_name': 'phoenix',
-      'type': 'executable',
-      'sources': [
-        'src/horcrux/phoenix.cc'
-      ],
-      'cflags': [ '-g',
-                  '-O0' ],
-      'dependencies': [
-        'deps/v8/gypfiles/v8.gyp:v8_postmortem_debugger',
-      ],
-      'include_dirs': [
-        'src/horcrux',
-        'deps/v8/include',
-      ],
-    }, # phoenix
-    {
       'target_name': '<(node_lib_target_name)',
       'type': '<(node_intermediate_lib_type)',
       'product_name': '<(node_core_target_name)',
@@ -389,6 +376,7 @@
         'src/js_stream.cc',
         'src/module_wrap.cc',
         'src/node.cc',
+        'src/node_postmortem_host.cc',
         'src/node_api.cc',
         'src/node_binding.cc',
         'src/node_buffer.cc',

@@ -12,8 +12,6 @@ from pprint import pprint
 from tempfile import NamedTemporaryFile
 from collections import OrderedDict
 
-HOST = "./out/Release/phoenix"
-
 
 # TODO(mmarchini) use Python logger?
 def logger(*args):
@@ -58,7 +56,7 @@ def v8_load(debugger, args, result, internal_dict):
   core_target = debugger.GetSelectedTarget()
   core_process = core_target.process
 
-  host_target = debugger.CreateTarget(HOST)
+  host_target = debugger.CreateTarget(core_target.executable.fullpath)
 
   context = V8Context()
 
@@ -67,7 +65,7 @@ def v8_load(debugger, args, result, internal_dict):
 
   launch_parameters = OrderedDict([
     ("listener", debugger.GetListener()),
-    ("argv", [context.stdin.name, context.stdout.name]),
+    ("argv", ["--experimental-postmortem-host", context.stdin.name, context.stdout.name]),
     ("envp", None),
     ("stdin_path", "/dev/null"),
     ("stdout_path", context.host_stdout.name),
@@ -104,7 +102,7 @@ def v8_load(debugger, args, result, internal_dict):
     if not memory_ranges.GetMemoryRegionAtIndex(i, memory_info):
       print >>result, "Range unavailable:", i
 
-    if not memory_info.IsReadable():
+    if not (memory_info.IsReadable() or memory_info.IsExecutable()):
       continue
 
     regions += 1
@@ -114,8 +112,12 @@ def v8_load(debugger, args, result, internal_dict):
 
     content = bytes(core_process.ReadMemory(addr, range_len, error))
     if error.Fail():
-      result.SetError(error)
-      return False
+      print error
+      continue
+
+    if len(content) != range_len:
+      print "Wrong read size"
+      continue
 
     # hex() will append a L at the end of the string if the number is large, so
     # we use "%x" instead
@@ -129,6 +131,7 @@ def v8_load(debugger, args, result, internal_dict):
 
     message = "%x %d %s" % (addr, range_len, filename)
     context.stdin.write(message)
+    context.stdin.write("\n")
     context.stdin.flush()
 
     ret = None
@@ -146,6 +149,7 @@ def v8_load(debugger, args, result, internal_dict):
       #  os.remove(filename)
 
   context.stdin.write("done")
+  context.stdin.write("\n")
   context.stdin.flush()
 
   debugger.SetSelectedTarget(core_target)
@@ -165,8 +169,7 @@ def v8_context(func):
   return v8_context_wrapper
 
 
-@v8_context
-def v8_stack(debugger, args, result, internal_dict, context):
+def handle_command_exchange(debugger, args, result, internal_dict, context):
   core_target = debugger.GetSelectedTarget()
   core_process = core_target.process
 
@@ -175,21 +178,21 @@ def v8_stack(debugger, args, result, internal_dict, context):
   stack_pointer = top_frame.FindRegister("rsp").unsigned
   program_counter = top_frame.FindRegister("rip").unsigned
 
-  context.stdin.write("s %d %d\n" % (stack_pointer, program_counter))
-  context.stdin.flush()
-
   while True:
     context.stdout.seek(context.current_line)
     request = "".join([line.rstrip('\n') for line in context.stdout.readlines()])
     context.current_line = context.stdout.tell()
 
-    context.host_stdout.seek(context.host_stdout_current_line)
-    lines = "\n".join(context.host_stdout.readlines())
-    context.host_stdout_current_line = context.host_stdout.tell()
-    if lines:
-      print lines.strip("\n")
+    #  context.host_stdout.seek(context.host_stdout_current_line)
+    #  lines = "\n".join([line.rstrip('\n') for line in context.host_stdout.readlines()])
+    #  context.host_stdout_current_line = context.host_stdout.tell()
+    #  if lines:
+      #  print lines.strip("\n")
 
-    if request == "end" or not context.host_process.is_running:
+    if not context.host_process.is_running:
+      return False
+
+    if request == "end":
       break
 
     if not request:
@@ -198,13 +201,12 @@ def v8_stack(debugger, args, result, internal_dict, context):
     if request.startswith("GetRegister"):
       register = request.split(" ")[1]
       reg_value = top_frame.FindRegister(register).unsigned
-      context.stdin.write(int_to_buffer(reg_value))
+      context.stdin.write("0x%x" % (reg_value))
       context.stdin.write("\n")
       context.stdin.flush()
     elif request.startswith("GetStaticData"):
       byte_count, name = request.split(" ")[1:]
       byte_count = int(byte_count)
-      logger(name)
       value = int_to_buffer(0)
       for m in core_target.module_iter():
         symbol = m.FindSymbol(name)
@@ -218,22 +220,20 @@ def v8_stack(debugger, args, result, internal_dict, context):
             logger("Oopsie doopsie!")
             continue
           value = try_value
-          logger(value)
           break
       context.stdin.write(value)
       context.stdin.write("\n")
       context.stdin.flush()
     elif request.startswith("GetTlsData"):
-      logger("Loading TLS data")
       key = int(request.split(" ")[1])
-      logger("for key: %d" % key)
 
       value = TLSAccessor(debugger).getspecific(key)
-      logger("Result: 0x%x" % value)
 
       context.stdin.write("%x" % value)
       context.stdin.write("\n")
       context.stdin.flush()
+    elif request.startswith("return"):
+      return request.split(" ", 1)[1]
 
   context.host_stdout.seek(context.host_stdout_current_line)
   lines = "\n".join(context.host_stdout.readlines())
@@ -243,15 +243,40 @@ def v8_stack(debugger, args, result, internal_dict, context):
 
 
 @v8_context
+def v8_stack(debugger, args, result, internal_dict, context):
+  core_target = debugger.GetSelectedTarget()
+  core_process = core_target.process
+  thread = core_process.selected_thread
+
+  print "* %s" % thread
+  for frame in thread.frames:
+    selected = " "
+    if frame.idx == thread.GetSelectedFrame().idx:
+      selected = "*"
+    if frame.symbol.IsValid():
+      print "  %s %s" % (selected, frame)
+    else:
+      stack_pointer = frame.FindRegister("rsp").unsigned
+      program_counter = frame.FindRegister("rip").unsigned
+      frame_pointer = frame.FindRegister("rbp").unsigned
+
+      context.stdin.write("f %d %d %d\n" % (stack_pointer, program_counter, frame_pointer))
+      context.stdin.flush()
+
+      frame_name = handle_command_exchange(debugger, args, result, internal_dict, context)
+      if not frame_name:
+        frame_name = ""
+      print "  %s %s %s" % (selected, frame, frame_name)
+
+  return True
+
+
+@v8_context
 def v8_print(debugger, args, result, internal_dict, context):
-  target = debugger.GetSelectedTarget()
-  context = internal_dict["v8_context"]
-  context.stdin.write("p\n")
+  context.stdin.write("p %x\n" % args.address)
   context.stdin.flush()
 
-  context.stdout.sync()
-  print >>result, context.stdout.readlines()
-  return True
+  return handle_command_exchange(debugger, args, result, internal_dict, context)
 
 
 HEX_RE = re.compile(r"^(?:0x){0,1}[0-9a-f]+")
@@ -333,11 +358,11 @@ class TLSAccessor(object):
     command_line = "p ((struct pthread*)0x%x)->specific[%d/32][%d%%32]" % (self._pthread_self, key, key)
     result = lldb.SBCommandReturnObject()
     result_status = interpreter.HandleCommand(command_line, result)
-    print result.GetOutput()
-    print result.GetError()
-    print re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput())
-    print re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput()).group(1)
-    print int(re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput()).group(1), 16)
+    #  print result.GetOutput()
+    #  print result.GetError()
+    #  print re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput())
+    #  print re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput()).group(1)
+    #  print int(re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput()).group(1), 16)
 
     return int(re.compile("data = (0x[0-9a-fA-F]+)").search(result.GetOutput()).group(1), 16)
 

@@ -9,8 +9,10 @@
 #include "src/elements.h"
 #include "src/frame-constants.h"
 #include "src/frames.h"
+#include "src/handles-inl.h"
 #include "src/isolate.h"
 #include "src/objects.h"
+#include "src/objects/string.h"
 #include "src/v8memory.h"
 
 namespace v8 {
@@ -115,6 +117,53 @@ V8_EXPORT void V8PostmortemPrintObject(void* object, RegisterAccessFunction r,
   if (!statics.SetStatics()) return;
   v8::internal::Object(reinterpret_cast<v8::internal::Address>(object))
       ->Print();
+}
+
+V8_EXPORT V8PostmortemStackFrame V8PostmortemGetStackFrame(uintptr_t stack_pointer,
+                                    uintptr_t program_counter,
+                                    uintptr_t frame_pointer,
+                                    RegisterAccessFunction r,
+                                    ThreadLocalAccessFunction t,
+                                    StaticAccessFunction s) {
+  v8::internal::PostmortemDebuggerStatics statics(t, s);
+  if (!statics.SetStatics()) return V8PostmortemStackFrame();
+
+  v8::internal::Isolate* isolate = v8::internal::Isolate::Current();
+
+  v8::internal::StackFrame::State state;
+  state.sp = stack_pointer;
+  state.pc_address = &program_counter;
+  state.fp = frame_pointer;
+
+  // The MentionedObjectCache is not GC-proof at the moment.
+  v8::internal::DisallowHeapAllocation no_gc;
+  v8::internal::HandleScope scope(isolate);
+
+  v8::internal::StackFrameIterator it(isolate, isolate->thread_local_top(), &state);
+
+  V8PostmortemStackFrame postmortem_frame{};
+  if (it.frame()->is_standard()) {
+    std::vector<v8::internal::FrameSummary> frames;
+    if (it.frame()->is_optimized()) {
+      v8::internal::OptimizedFrame::cast(it.frame())->Summarize(&frames);
+    } else if (it.frame()->is_interpreted()) {
+      v8::internal::InterpretedFrame::cast(it.frame())->Summarize(&frames);
+    } else if (it.frame()->is_java_script()) {
+      v8::internal::JavaScriptFrame::cast(it.frame())->Summarize(&frames);
+    } else {
+      postmortem_frame.name = std::string(v8::internal::StackFrame::StringForStackFrameType(it.frame()->type()));
+      return postmortem_frame;
+    }
+    int length = 0;
+    std::unique_ptr<char[]> c_str =
+        frames.back().FunctionName()->ToCString(v8::internal::DISALLOW_NULLS, v8::internal::ROBUST_STRING_TRAVERSAL, &length);
+    postmortem_frame.is_internal = false;
+    postmortem_frame.name = std::string(c_str.get());
+  } else {
+    postmortem_frame.name = std::string(v8::internal::StackFrame::StringForStackFrameType(it.frame()->type()));
+  }
+
+  return postmortem_frame;
 }
 
 V8_EXPORT void V8PostmortemPrintStackTrace(uintptr_t stack_pointer,

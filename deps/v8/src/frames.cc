@@ -746,7 +746,9 @@ void PrintIndex(StringStream* accumulator, StackFrame::PrintMode mode,
   accumulator->Add((mode == StackFrame::OVERVIEW) ? "%5d: " : "[%d]: ", index);
 }
 
-const char* StringForStackFrameType(StackFrame::Type type) {
+}  // namespace
+
+const char* StackFrame::StringForStackFrameType(StackFrame::Type type) {
   switch (type) {
 #define CASE(value, name) \
   case StackFrame::value: \
@@ -757,7 +759,6 @@ const char* StringForStackFrameType(StackFrame::Type type) {
       UNREACHABLE();
   }
 }
-}  // namespace
 
 void StackFrame::Print(StringStream* accumulator, PrintMode mode,
                        int index) const {

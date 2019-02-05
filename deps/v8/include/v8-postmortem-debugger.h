@@ -29,6 +29,12 @@ enum class StaticAccessResult {
   kGenericError,
 };
 
+struct V8PostmortemStackFrame {
+  std::string name = "";
+  bool is_internal = true;
+};
+
+
 // Functionality that must be provided by the postmortem host:
 
 // Gets a register from the debuggee by register index.
@@ -51,6 +57,13 @@ V8_EXPORT void V8PostmortemPrintObject(void* object, RegisterAccessFunction r,
                                        ThreadLocalAccessFunction t,
                                        StaticAccessFunction s,
                                        std::ostream& output=std::cout);
+
+V8_EXPORT V8PostmortemStackFrame V8PostmortemGetStackFrame(uintptr_t stack_pointer,
+                                    uintptr_t program_counter,
+                                    uintptr_t frame_pointer,
+                                    RegisterAccessFunction r,
+                                    ThreadLocalAccessFunction t,
+                                    StaticAccessFunction s);
 
 // Prints the current JS call stack.
 V8_EXPORT void V8PostmortemPrintStackTrace(uintptr_t stack_pointer,

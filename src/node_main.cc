@@ -20,6 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "node.h"
+#include "node_postmortem_host.h"
 #include <stdio.h>
 #include <getopt.h>
 
@@ -95,23 +96,10 @@ extern bool linux_at_secure;
 }  // namespace node
 
 int main(int argc, char* argv[]) {
-// #if defined(V8_POSTMORTEM_HOST)
-  int postmortemHostFlag = 0;
-  static struct option long_options[] = {
-    /* These options set a flag. */
-    {"experimental-postmortem-host", no_argument, &postmortemHostFlag, 1},
-    {0, 0, 0, 0}
-  };
-  printf("hyhy\n");
-  while (getopt_long (argc, argv, "", long_options, nullptr) != -1) {
-    printf("hehe\n");
-  };
-  if (postmortemHostFlag) {
-    printf("haha\n");
-    return 0;
+  if (std::string(argv[1]) == "--experimental-postmortem-host") {
+    return PostmortemHost(argc, argv);
   }
 
-// #endif
 #if defined(__POSIX__) && defined(NODE_SHARED_MODE)
   // In node::PlatformInit(), we squash all signal handlers for non-shared lib
   // build. In order to run test cases against shared lib build, we also need

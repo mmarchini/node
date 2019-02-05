@@ -56,6 +56,9 @@
     # Enable disassembler for `--print-code` v8 options
     'v8_enable_disassembler': 1,
 
+    # Enable disassembler for `--print-code` v8 options
+    'v8_object_print': 1,
+
     # Don't bake anything extra into the snapshot.
     'v8_use_external_startup_data': 0,
 

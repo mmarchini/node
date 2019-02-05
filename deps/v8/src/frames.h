@@ -129,6 +129,8 @@ class StackFrame {
 
   using State = StackFrameState;
 
+  static const char* StringForStackFrameType(StackFrame::Type type);
+
   // Convert a stack frame type to a marker that can be stored on the stack.
   //
   // The marker is an opaque value, not intended to be interpreted in any way
