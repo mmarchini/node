@@ -47,22 +47,14 @@ if (!common.isLinux)
   common.skip('only testing Linux for now');
 
 const perf = spawnSync('perf', perfArgs, options);
-
-if (perf.error && perf.error.errno === 'ENOENT')
-  common.skip('perf not found on system');
-
-if (perf.status !== 0) {
-  common.skip(`Failed to execute perf: ${perf.stderr}`);
-}
+assert.ifError(perf.error);
+if (perf.status !== 0)
+  throw new Error(`Failed to execute 'perf': ${perf.stderr}`);
 
 const perfScript = spawnSync('perf', perfScriptArgs, options);
-
-if (perf.error)
-  common.skip(`perf script aborted: ${perf.error.errno}`);
-
-if (perfScript.status !== 0) {
-  common.skip(`Failed to execute perf script: ${perfScript.stderr}`);
-}
+assert.ifError(perfScript.error);
+if (perfScript.status !== 0)
+  throw new Error(`Failed to execute perf script: ${perfScript.stderr}`);
 
 const interpretedFunctionOneRe = /InterpretedFunction:functionOne/;
 const compiledFunctionOneRe = /LazyCompile:\*functionOne/;
