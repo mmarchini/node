@@ -99,7 +99,7 @@ class BenchmarkProgress {
     const completedRate = ((completedRuns + runRate) / scheduledRuns);
     const percent = pad(Math.floor(completedRate * 100), 3, ' ');
 
-    const caption = finished ? 'Done\n' : this.currentFile;
+    const caption = finished ? 'Done\n' : (this.currentFile + (!process.stderr.isTTY ? "\n" : ""));
     return `[${getTime(diff)}|% ${percent}| ` +
            `${fraction(completedFiles, scheduledFiles)} files | ` +
            `${fraction(completedRunsForFile, runsPerFile)} runs | ` +
@@ -108,11 +108,13 @@ class BenchmarkProgress {
   }
 
   updateProgress() {
-    if (!process.stderr.isTTY || process.stdout.isTTY) {
+    if (process.stdout.isTTY) {
       return;
     }
-    readline.clearLine(process.stderr);
-    readline.cursorTo(process.stderr, 0);
+    if (process.stderr.isTTY) {
+      readline.clearLine(process.stderr);
+      readline.cursorTo(process.stderr, 0);
+    }
     process.stderr.write(this.getProgress());
   }
 }
