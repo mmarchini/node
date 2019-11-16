@@ -1407,7 +1407,7 @@ DEFINE_BOOL(perf_basic_prof_only_functions, false,
 DEFINE_IMPLICATION(perf_basic_prof_only_functions, perf_basic_prof)
 DEFINE_BOOL(perf_prof, false,
             "Enable perf linux profiler (experimental annotate support).")
-DEFINE_NEG_IMPLICATION(perf_prof, compact_code_space)
+// DEFINE_NEG_IMPLICATION(perf_prof, compact_code_space)
 // TODO(v8:8462) Remove implication once perf supports remapping.
 DEFINE_NEG_IMPLICATION(perf_prof, write_protect_code_memory)
 DEFINE_NEG_IMPLICATION(perf_prof, wasm_write_protect_code_memory)

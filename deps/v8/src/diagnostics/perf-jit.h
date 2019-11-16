@@ -30,10 +30,18 @@
 
 #include "src/logging/log.h"
 
+#include <tuple>
+#include <unordered_map>
+
 namespace v8 {
 namespace internal {
 
 #if V8_OS_LINUX
+
+struct PerfJitCodeCacheEntry {
+  uint64_t code_size;
+  uint64_t code_index;
+};
 
 // Linux perf tool logging support
 class PerfJitLogger : public CodeEventLogger {
@@ -67,6 +75,7 @@ class PerfJitLogger : public CodeEventLogger {
 
   void WriteJitCodeLoadEntry(const uint8_t* code_pointer, uint32_t code_size,
                              const char* name, int name_length);
+  void WriteJitCodeMoveEntry(const uint64_t from, const uint64_t to);
 
   void LogWriteBytes(const char* bytes, int size);
   void LogWriteHeader();
@@ -111,6 +120,7 @@ class PerfJitLogger : public CodeEventLogger {
   static uint64_t reference_count_;
   static void* marker_address_;
   static uint64_t code_index_;
+  std::unordered_map<uint64_t, PerfJitCodeCacheEntry> perf_jit_code_cache_;
 };
 
 #else

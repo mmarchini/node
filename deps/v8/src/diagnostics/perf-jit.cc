@@ -87,6 +87,16 @@ struct PerfJitCodeLoad : PerfJitBase {
   uint64_t code_id_;
 };
 
+struct PerfJitCodeMove : PerfJitBase {
+  uint32_t process_id_;
+  uint32_t thread_id_;
+  uint64_t vma_;
+  uint64_t old_code_addr_;
+  uint64_t new_code_addr_;
+  uint64_t code_size_;
+  uint64_t code_id_;
+};
+
 struct PerfJitDebugEntry {
   uint64_t address_;
   int line_number_;
@@ -264,12 +274,36 @@ void PerfJitLogger::WriteJitCodeLoadEntry(const uint8_t* code_pointer,
   code_load.code_size_ = code_size;
   code_load.code_id_ = code_index_;
 
+  perf_jit_code_cache_[reinterpret_cast<uint64_t>(code_pointer)] = PerfJitCodeCacheEntry{ .code_size = code_size, .code_index = code_index_ };
+
   code_index_++;
 
   LogWriteBytes(reinterpret_cast<const char*>(&code_load), sizeof(code_load));
   LogWriteBytes(name, name_length);
   LogWriteBytes(string_terminator, 1);
   LogWriteBytes(reinterpret_cast<const char*>(code_pointer), code_size);
+}
+
+void PerfJitLogger::WriteJitCodeMoveEntry(const uint64_t from,
+                                          const uint64_t to) {
+  PerfJitCodeCacheEntry& cache_entry = perf_jit_code_cache_[from];
+  perf_jit_code_cache_.erase(from);
+  perf_jit_code_cache_[to] = cache_entry;
+
+  PerfJitCodeMove code_move;
+  code_move.event_ = PerfJitCodeLoad::kMove;
+  code_move.size_ = sizeof(code_move);
+  code_move.time_stamp_ = GetTimestamp();
+  code_move.process_id_ =
+      static_cast<uint32_t>(base::OS::GetCurrentProcessId());
+  code_move.thread_id_ = static_cast<uint32_t>(base::OS::GetCurrentThreadId());
+  code_move.vma_ = to;
+  code_move.old_code_addr_ = from;
+  code_move.new_code_addr_ = to;
+  code_move.code_size_ = cache_entry.code_size;
+  code_move.code_id_ = cache_entry.code_index;
+
+  LogWriteBytes(reinterpret_cast<const char*>(&code_move), sizeof(code_move));
 }
 
 namespace {
@@ -423,9 +457,21 @@ void PerfJitLogger::LogWriteUnwindingInfo(Code code) {
 }
 
 void PerfJitLogger::CodeMoveEvent(AbstractCode from, AbstractCode to) {
-  // We may receive a CodeMove event if a BytecodeArray object moves. Otherwise
-  // code relocation is not supported.
-  CHECK(from.IsBytecodeArray());
+  base::LockGuard<base::RecursiveMutex> guard_file(file_mutex_.Pointer());
+
+  if (perf_output_handle_ == nullptr) return;
+
+  // We only support non-interpreted functions.
+  if (!from.IsCode()) return;
+  DCHECK(code->raw_instruction_start() == code->address() + Code::kHeaderSize);
+
+  // We don't have enough information to report this code move
+  uint64_t from_start = reinterpret_cast<uint64_t>(from.InstructionStart());
+  DCHECK(perf_jit_code_cache_.count(from_start) == 0);
+  if (perf_jit_code_cache_.count(from_start) == 0) return;
+
+  WriteJitCodeMoveEntry(from_start,
+                        reinterpret_cast<uint64_t>(to.InstructionStart()));
 }
 
 void PerfJitLogger::LogWriteBytes(const char* bytes, int size) {
