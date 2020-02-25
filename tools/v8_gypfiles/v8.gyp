@@ -1608,6 +1608,14 @@
     {
       'target_name': 'v8_zlib',
       'type': 'static_library',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+        ['OS=="win"', {
+          'defines': ['X86_WINDOWS'],
+        }],
+      ],
       'direct_dependent_settings': {
         'include_dirs': [ '<(V8_ROOT)/third_party/zlib' ],
       },
