@@ -1,25 +1,25 @@
-name: node ASAN
+name: clang ASAN + cctest
 
 on: [push, pull_request]
 
 jobs:
-  ubuntu-build:
+  asan:
       runs-on: ubuntu-latest
       container: gengjiawen/node-build:2020-02-14
+      env:
+        CC: clang
+        CXX: clang++
+        LINK: clang++
       steps:
         - uses: actions/checkout@v2
+        - name: Environment info
+          run: npx envinfo
+        - name: Configure
+          run: ./configure --enable-asan
         - name: Build
-          # TODO(mmarchini): With V8 8.1, GitHub Actions doesn't have enough
-          # memory to build with debug and ASAN. Allow this build to fail until
-          # we figure out a workaround, or until we update to 8.2 (where build
-          # is passing).
-          continue-on-error: true
-          run: |
-              npx envinfo
-              ./configure --debug --enable-asan --ninja && ninja -C out/Debug
+          run: make -j2
         - name: Test
           env:
-            ASAN_OPTIONS: halt_on_error=0
-          continue-on-error: true
-          run: |
-            python3 tools/test.py -J --mode=debug
+            ASAN_OPTIONS: new_delete_type_mismatch=0
+          run:
+            make -j2 cctest
